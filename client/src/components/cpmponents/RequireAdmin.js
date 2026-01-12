@@ -1,6 +1,6 @@
 import { useSelector } from 'react-redux';
 import { Navigate, useLocation } from 'react-router-dom';
-import useAuth from '../features/user/useAuth';
+import useAuth from '../../features/user/useAuth';
 
 const RequireAdmin = ({ children }) => {
     const { isUserLoggedIn } = useSelector((state) => state.auth);

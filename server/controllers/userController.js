@@ -290,9 +290,3 @@ const resetPassword = async (req, res) => {
 }
 
 module.exports = { login, register, getAllUser, getUserById, deleteUser, updateUser, logout, getCurrentUserProfile, forgotPassword, resetPassword }
-
-
-
-
-
-

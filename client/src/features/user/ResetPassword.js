@@ -1,10 +1,12 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Card } from 'primereact/card';
 import { Password } from 'primereact/password';
 import { Button } from 'primereact/button';
 import { Toast } from 'primereact/toast';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
 import { useResetPasswordMutation } from './userSlice';
+import { logOut } from './authSlice';
 import './Auth.css';
 
 const ResetPassword = () => {
@@ -15,6 +17,12 @@ const ResetPassword = () => {
     const [resetSuccess, setResetSuccess] = useState(false);
     const toast = useRef(null);
     const navigate = useNavigate();
+    const dispatch = useDispatch();
+
+    // ניקוי טוקנים ישנים כשנכנסים לעמוד איפוס סיסמה
+    useEffect(() => {
+        dispatch(logOut());
+    }, [dispatch]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();

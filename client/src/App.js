@@ -5,7 +5,7 @@ import ForgotPassword from './features/user/ForgotPassword';
 import ResetPassword from './features/user/ResetPassword';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 
-import Layout from './components/layout';
+import Layout from './components/cpmponents/layout';
 import Home from './components/Home';
 import AllProduct from './features/product/allProduct';
 import CaeateProduct from "./features/product/CreateProduct"
@@ -14,9 +14,9 @@ import GetBasket from './features/basket/getBasket';
 import AdminProducts from './features/product/adminProducts';
 import AdminUserList from './features/user/AdminUserList';
 import UserProfile from './features/user/UserProfile';
-import NotFound from './components/NotFound';
-import RequireAuth from './components/RequireAuth';
-import RequireAdmin from './components/RequireAdmin';
+import NotFound from './components/cpmponents/NotFound';
+import RequireAuth from './components/cpmponents/RequireAuth';
+import RequireAdmin from './components/cpmponents/RequireAdmin';
 
 function App() {
   return (

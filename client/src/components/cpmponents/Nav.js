@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "react-router-dom"
 import { useSelector, useDispatch } from "react-redux"
-import useAuth from "../features/user/useAuth"
-import { logOut } from "../features/user/authSlice"
+import useAuth from "../../features/user/useAuth"
+import { logOut } from "../../features/user/authSlice"
 import { Button } from 'primereact/button'
 import './Nav.css'
 
