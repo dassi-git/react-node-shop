@@ -46,7 +46,10 @@ const seedDevelopmentProducts = async () => {
 const connectDB = async () => {
   try {
     const mongoUri = process.env.DATABASE_URI || 'mongodb://localhost:27017/329166185'
-    await mongoose.connect(mongoUri)
+    await mongoose.connect(mongoUri, {
+      serverSelectionTimeoutMS: 5000,
+      connectTimeoutMS: 5000
+    })
     await seedDevelopmentProducts()
     console.log('Connected to MongoDB successfully')
   } catch (err) {
@@ -54,7 +57,10 @@ const connectDB = async () => {
     try {
       const mongoServer = await MongoMemoryServer.create()
       const uri = mongoServer.getUri()
-      await mongoose.connect(uri)
+      await mongoose.connect(uri, {
+        serverSelectionTimeoutMS: 5000,
+        connectTimeoutMS: 5000
+      })
       await seedDevelopmentProducts()
       console.log('Connected to in-memory MongoDB successfully')
     } catch (memoryErr) {
