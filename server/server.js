@@ -11,7 +11,11 @@ const app=express()
 
 connectDB()
 
-app.use(helmet())
+app.use(
+    helmet({
+        crossOriginResourcePolicy: { policy: 'cross-origin' }
+    })
+)
 app.use(cors(corsOption))
 app.use(express.static("public"))
 app.use(express.json())

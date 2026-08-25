@@ -12,11 +12,8 @@ const Nav = () => {
     const navigate = useNavigate()
 
     const objToken = useAuth()
-
-    let roles = null;
-    if (objToken) {
-        roles = objToken.role;
-    }
+    const roles = objToken?.role ?? null
+    const isLoggedIn = Boolean(isUserLoggedIn && objToken)
 
     const handleLogout = () => {
         dispatch(logOut())
@@ -34,17 +31,17 @@ const Nav = () => {
                     <div className="nav-links">
                         <Link to="/">דף הבית</Link>
                         <Link to="/allProduct">מוצרים</Link>
-                        {isUserLoggedIn && <Link to="/basket">סל קניות</Link>}
-                        {isUserLoggedIn && <Link to="/profile">הפרופיל שלי</Link>}
-                        {roles === "Admin" && isUserLoggedIn && <Link to="/adminproduct">ניהול מוצרים</Link>}
-                        {roles === "Admin" && isUserLoggedIn && <Link to="/adminusers">ניהול משתמשים</Link>}
-                        {!isUserLoggedIn && <Link to="/login">התחברות</Link>}
-                        {!isUserLoggedIn && <Link to="/register">הרשמה</Link>}
+                        {isLoggedIn && <Link to="/basket">סל קניות</Link>}
+                        {isLoggedIn && <Link to="/profile">הפרופיל שלי</Link>}
+                        {roles === "Admin" && isLoggedIn && <Link to="/adminproduct">ניהול מוצרים</Link>}
+                        {roles === "Admin" && isLoggedIn && <Link to="/adminusers">ניהול משתמשים</Link>}
+                        {!isLoggedIn && <Link to="/login">התחברות</Link>}
+                        {!isLoggedIn && <Link to="/register">הרשמה</Link>}
                     </div>
                     
                     <div className="nav-user-section">
-                        {isUserLoggedIn && <span className="nav-user-name">שלום {objToken.name}</span>}
-                        {isUserLoggedIn && (
+                        {isLoggedIn && <span className="nav-user-name">שלום {objToken?.name}</span>}
+                        {isLoggedIn && (
                             <Button 
                                 label="יציאה" 
                                 icon="pi pi-sign-out" 

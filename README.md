@@ -1,4 +1,4 @@
-# 🛒 Full-Stack E-Commerce Platform
+# 🛒 react-node-shop
 
 A professional, production-ready e-commerce application built with the MERN stack featuring enterprise-grade security, comprehensive error handling, and advanced middleware protection.
 
@@ -52,8 +52,8 @@ A professional, production-ready e-commerce application built with the MERN stac
 
 **1. Clone & Install**
 ```bash
-git clone https://github.com/dassi-git/git-node-session.git
-cd git-node-session
+git clone https://github.com/dassi-git/react-node-shop.git
+cd react-node-shop
 
 # Server
 cd server
