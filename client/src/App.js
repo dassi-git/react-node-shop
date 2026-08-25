@@ -22,6 +22,7 @@ import RequireAdmin from './components/cpmponents/RequireAdmin';
 import QuoteRequestPage from './features/order/QuoteRequestPage';
 import AdminQuotePage from './features/order/AdminQuotePage';
 import MyOrdersPage from './features/order/MyOrdersPage';
+import AdminOrdersPage from './features/order/AdminOrdersPage';
 
 function App() {
   return (
@@ -50,6 +51,11 @@ function App() {
             <Route path="/admin-quotes" element={
               <RequireAdmin>
                 <AdminQuotePage />
+              </RequireAdmin>
+            } />
+            <Route path="/admin-orders" element={
+              <RequireAdmin>
+                <AdminOrdersPage />
               </RequireAdmin>
             } />
             <Route path="/adminproduct" element={
