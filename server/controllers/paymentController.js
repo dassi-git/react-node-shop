@@ -29,10 +29,10 @@ const finishPayment = async ({ orderId, userId, amount, provider, providerPaymen
 
 const createPayment = async (req, res) => {
     try {
-        const { orderId, amount, paymentMethod, transactionId, notes } = req.body
+        const { orderId, paymentMethod, transactionId, notes } = req.body
 
-        if (!orderId || !amount) {
-            return res.status(400).json({ message: 'orderId and amount are required.' })
+        if (!orderId) {
+            return res.status(400).json({ message: 'orderId is required.' })
         }
 
         const { order, error } = await getAuthorizedOrder(orderId, req.user)
@@ -70,6 +70,9 @@ const confirmPayment = async (req, res) => {
         const order = await Order.findById(payment.orderId)
         if (!order) {
             return res.status(404).json({ message: 'Order not found for this payment' })
+        }
+        if (order.userId.toString() !== req.user._id.toString() && req.user.role !== 'Admin') {
+            return res.status(403).json({ message: 'Forbidden: cannot confirm this payment' })
         }
 
         payment.status = 'paid'
@@ -114,7 +117,7 @@ const completeStripeCheckout = async (req, res) => {
         const stripe = Stripe(process.env.STRIPE_SECRET_KEY)
         const session = await stripe.checkout.sessions.retrieve(req.params.sessionId)
         if (session.payment_status !== 'paid' || !session.metadata?.orderId) return res.status(400).json({ message: 'Stripe payment is not complete.' })
-        const order = await Order.findById(session.metadata.orderId)
+        const order = await Order.findById(session.metadata.orderId).populate('quote')
         if (!order || (req.user.role !== 'Admin' && order.userId.toString() !== req.user._id.toString())) return res.status(403).json({ message: 'Forbidden' })
         const paidAmount = Number(session.amount_total || 0) / 100
         const expectedAmount = Number(order.quote?.depositAmount || order.finalPrice || order.totalPrice || 0)
@@ -184,6 +187,11 @@ const capturePaypalOrder = async (req, res) => {
 const getPaymentsForOrder = async (req, res) => {
     try {
         const { orderId } = req.params
+        const order = await Order.findById(orderId).select('userId')
+        if (!order) return res.status(404).json({ message: 'Order not found' })
+        if (req.user.role !== 'Admin' && order.userId.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ message: 'Forbidden: cannot view these payments' })
+        }
         const payments = await Payment.find({ orderId }).sort({ createdAt: -1 })
         return res.json(payments)
     } catch (error) {

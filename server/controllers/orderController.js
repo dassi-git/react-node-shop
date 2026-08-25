@@ -18,6 +18,12 @@ const createOrder = async (req, res) => {
         const normalizedItems = items.map((item) => {
             const quantity = Number(item.quantity || 1)
             const unitPrice = Number(item.unitPrice || 0)
+            if (!Number.isInteger(quantity) || quantity < 1 || quantity > 100) {
+                throw new Error('Quantity must be a whole number between 1 and 100.')
+            }
+            if (!Number.isFinite(unitPrice) || unitPrice < 0 || unitPrice > 100000) {
+                throw new Error('Unit price must be a valid non-negative amount.')
+            }
             const totalPrice = unitPrice * quantity
 
             return {
@@ -33,6 +39,9 @@ const createOrder = async (req, res) => {
 
         const subtotal = normalizedItems.reduce((sum, item) => sum + Number(item.totalPrice || 0), 0)
         const fee = Number(deliveryFee || 0)
+        if (!Number.isFinite(fee) || fee < 0 || fee > 100000) {
+            return res.status(400).json({ message: 'Delivery fee must be a valid non-negative amount.' })
+        }
         const totalPrice = subtotal + fee
 
         const order = await Order.create({
@@ -52,6 +61,9 @@ const createOrder = async (req, res) => {
         return res.status(201).json({ message: 'Order created successfully', order })
     } catch (error) {
         console.error('Error creating order:', error)
+        if (error.message.includes('Quantity must') || error.message.includes('Unit price must')) {
+            return res.status(400).json({ message: error.message })
+        }
         return res.status(500).json({ message: 'Server error creating order' })
     }
 }
@@ -92,7 +104,7 @@ const getOrderById = async (req, res) => {
             return res.status(404).json({ message: 'Order not found' })
         }
 
-        if (req.user.role !== 'Admin' && order.userId._id.toString() !== req.user._id.toString()) {
+        if (req.user.role !== 'Admin' && order.userId?._id?.toString() !== req.user._id.toString()) {
             return res.status(403).json({ message: 'Forbidden: you cannot access this order' })
         }
 
@@ -133,6 +145,10 @@ const updateOrderStatus = async (req, res) => {
             return res.status(404).json({ message: 'Order not found' })
         }
 
+        if (order.status === 'completed' || order.status === 'cancelled') {
+            return res.status(400).json({ message: 'Completed or cancelled orders cannot be changed.' })
+        }
+
         order.status = status
         await order.save()
 
@@ -159,6 +175,9 @@ const acceptQuote = async (req, res) => {
         const quote = await Quote.findById(order.quote)
         if (!quote) {
             return res.status(404).json({ message: 'No quote exists for this order' })
+        }
+        if (quote.status !== 'sent' || (quote.validUntil && quote.validUntil < new Date())) {
+            return res.status(400).json({ message: 'This quote is no longer available.' })
         }
 
         quote.status = 'accepted'

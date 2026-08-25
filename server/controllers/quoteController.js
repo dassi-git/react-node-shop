@@ -13,6 +13,15 @@ const createQuote = async (req, res) => {
         if (!order) {
             return res.status(404).json({ message: 'Order not found' })
         }
+        if (!Number.isFinite(Number(quotePrice)) || Number(quotePrice) < 0 || Number(quotePrice) > 100000) {
+            return res.status(400).json({ message: 'Quote price must be a valid non-negative amount.' })
+        }
+        if (!Number.isFinite(Number(deliveryFee || 0)) || Number(deliveryFee || 0) < 0 || Number(deliveryFee || 0) > 100000) {
+            return res.status(400).json({ message: 'Delivery fee must be a valid non-negative amount.' })
+        }
+        if (!Number.isFinite(Number(depositAmount || 0)) || Number(depositAmount || 0) < 0 || Number(depositAmount || 0) > Number(quotePrice)) {
+            return res.status(400).json({ message: 'Deposit must be between zero and the quote price.' })
+        }
 
         const quote = await Quote.create({
             orderId,
@@ -41,6 +50,11 @@ const createQuote = async (req, res) => {
 const getQuotesForOrder = async (req, res) => {
     try {
         const { orderId } = req.params
+        const order = await Order.findById(orderId)
+        if (!order) return res.status(404).json({ message: 'Order not found' })
+        if (req.user.role !== 'Admin' && order.userId.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ message: 'Forbidden: cannot view these quotes' })
+        }
         const quotes = await Quote.find({ orderId }).sort({ createdAt: -1 })
         return res.json(quotes)
     } catch (error) {
@@ -64,6 +78,9 @@ const acceptQuote = async (req, res) => {
 
         if (req.user.role !== 'Admin' && order.userId.toString() !== req.user._id.toString()) {
             return res.status(403).json({ message: 'Forbidden: cannot accept this quote' })
+        }
+        if (quote.status !== 'sent' || (quote.validUntil && quote.validUntil < new Date())) {
+            return res.status(400).json({ message: 'This quote is no longer available.' })
         }
 
         quote.status = 'accepted'
@@ -94,6 +111,9 @@ const rejectQuote = async (req, res) => {
 
         if (req.user.role !== 'Admin' && order.userId.toString() !== req.user._id.toString()) {
             return res.status(403).json({ message: 'Forbidden: cannot reject this quote' })
+        }
+        if (quote.status !== 'sent') {
+            return res.status(400).json({ message: 'This quote is no longer available.' })
         }
 
         quote.status = 'rejected'
