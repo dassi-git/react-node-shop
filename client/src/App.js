@@ -23,6 +23,7 @@ import QuoteRequestPage from './features/order/QuoteRequestPage';
 import AdminQuotePage from './features/order/AdminQuotePage';
 import MyOrdersPage from './features/order/MyOrdersPage';
 import AdminOrdersPage from './features/order/AdminOrdersPage';
+import PaymentSuccessPage from './features/order/PaymentSuccessPage';
 
 function App() {
   return (
@@ -44,6 +45,11 @@ function App() {
             <Route path="/my-orders" element={
               <RequireAuth>
                 <MyOrdersPage />
+              </RequireAuth>
+            } />
+            <Route path="/payment-success" element={
+              <RequireAuth>
+                <PaymentSuccessPage />
               </RequireAuth>
             } />
             

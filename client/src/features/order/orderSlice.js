@@ -86,6 +86,38 @@ const orderSlice = apiSlice.injectEndpoints({
             invalidatesTags: ['Order', 'Payment']
         }),
 
+        createStripeCheckout: build.mutation({
+            query: (orderId) => ({
+                url: '/payment/stripe/checkout',
+                method: 'POST',
+                body: { orderId }
+            })
+        }),
+
+        completeStripeCheckout: build.mutation({
+            query: (sessionId) => ({
+                url: `/payment/stripe/complete/${sessionId}`,
+                method: 'POST'
+            }),
+            invalidatesTags: ['Order', 'Payment']
+        }),
+
+        createPaypalOrder: build.mutation({
+            query: (orderId) => ({
+                url: '/payment/paypal/order',
+                method: 'POST',
+                body: { orderId }
+            })
+        }),
+
+        capturePaypalOrder: build.mutation({
+            query: (orderId) => ({
+                url: `/payment/paypal/capture/${orderId}`,
+                method: 'POST'
+            }),
+            invalidatesTags: ['Order', 'Payment']
+        }),
+
         confirmPayment: build.mutation({
             query: (paymentId) => ({
                 url: `/payment/${paymentId}/confirm`,
@@ -107,5 +139,9 @@ export const {
     useAcceptQuoteMutation,
     useRejectQuoteMutation,
     useCreatePaymentMutation,
-    useConfirmPaymentMutation
+    useConfirmPaymentMutation,
+    useCreateStripeCheckoutMutation,
+    useCompleteStripeCheckoutMutation,
+    useCreatePaypalOrderMutation,
+    useCapturePaypalOrderMutation
 } = orderSlice

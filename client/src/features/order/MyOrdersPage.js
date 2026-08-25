@@ -3,7 +3,7 @@ import { Card } from 'primereact/card'
 import { Button } from 'primereact/button'
 import { Tag } from 'primereact/tag'
 import { Toast } from 'primereact/toast'
-import { useGetMyOrdersQuery, useAcceptQuoteMutation, useRejectQuoteMutation, useCreatePaymentMutation } from './orderSlice'
+import { useGetMyOrdersQuery, useAcceptQuoteMutation, useRejectQuoteMutation, useCreateStripeCheckoutMutation, useCreatePaypalOrderMutation } from './orderSlice'
 
 const statusLabels = {
     draft: 'טיוטה',
@@ -25,7 +25,8 @@ const MyOrdersPage = () => {
     const { data: orders = [], isLoading, refetch } = useGetMyOrdersQuery()
     const [acceptQuote, { isLoading: isAccepting }] = useAcceptQuoteMutation()
     const [rejectQuote, { isLoading: isRejecting }] = useRejectQuoteMutation()
-    const [createPayment, { isLoading: isPaying }] = useCreatePaymentMutation()
+    const [createStripeCheckout, { isLoading: isStripePaying }] = useCreateStripeCheckoutMutation()
+    const [createPaypalOrder, { isLoading: isPaypalPaying }] = useCreatePaypalOrderMutation()
     const toast = React.useRef(null)
 
     const handleAcceptQuote = async (quoteId) => {
@@ -68,36 +69,12 @@ const MyOrdersPage = () => {
         }
     }
 
-    const handlePayOrder = async (order) => {
-        const quote = order?.quote
-        const amount = Number(quote?.depositAmount || quote?.quotePrice || order?.finalPrice || order?.totalPrice || 0)
-
-        if (!amount) {
-            toast.current?.show({
-                severity: 'warn',
-                summary: 'שגיאה',
-                detail: 'לא נקבע סכום לתשלום',
-                life: 3000
-            })
-            return
-        }
-
+    const handlePayOrder = async (order, provider) => {
         try {
-            await createPayment({
-                orderId: order._id,
-                amount,
-                paymentMethod: 'card',
-                transactionId: `custom-order-${order.orderNumber}`,
-                notes: 'תשלום עבור הזמנת עיצוב פירות' 
-            }).unwrap()
-
-            toast.current?.show({
-                severity: 'success',
-                summary: 'התשלום נשלח',
-                detail: 'הזמנתך עברה לסטטוס תשלום בהמתנה',
-                life: 3000
-            })
-            refetch()
+            const result = provider === 'stripe'
+                ? await createStripeCheckout(order._id).unwrap()
+                : await createPaypalOrder(order._id).unwrap()
+            if (result.url) window.location.assign(result.url)
         } catch (error) {
             toast.current?.show({
                 severity: 'error',
@@ -160,11 +137,22 @@ const MyOrdersPage = () => {
                                             )}
 
                                             {order.status === 'quote_accepted' && (
-                                                <Button
-                                                    label={isPaying ? 'מעביר לתשלום...' : 'שלם עכשיו'}
-                                                    onClick={() => handlePayOrder(order)}
-                                                    disabled={isPaying}
-                                                />
+                                                <>
+                                                    <Button
+                                                        label={isStripePaying ? 'מעביר ל־Stripe...' : 'תשלום בכרטיס'}
+                                                        icon="pi pi-credit-card"
+                                                        onClick={() => handlePayOrder(order, 'stripe')}
+                                                        disabled={isStripePaying || isPaypalPaying}
+                                                    />
+                                                    <Button
+                                                        label={isPaypalPaying ? 'מעביר ל־PayPal...' : 'תשלום ב־PayPal'}
+                                                        icon="pi pi-wallet"
+                                                        severity="secondary"
+                                                        className="p-button-outlined"
+                                                        onClick={() => handlePayOrder(order, 'paypal')}
+                                                        disabled={isStripePaying || isPaypalPaying}
+                                                    />
+                                                </>
                                             )}
                                         </div>
                                     )}

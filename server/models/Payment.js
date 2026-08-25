@@ -18,8 +18,17 @@ const paymentSchema = new mongoose.Schema({
     },
     paymentMethod: {
         type: String,
-        enum: ['card', 'paypal', 'cash', 'bank_transfer'],
+        enum: ['card', 'stripe', 'paypal', 'cash', 'bank_transfer'],
         default: 'card'
+    },
+    provider: {
+        type: String,
+        enum: ['internal', 'stripe', 'paypal'],
+        default: 'internal'
+    },
+    providerPaymentId: {
+        type: String,
+        default: ''
     },
     status: {
         type: String,
