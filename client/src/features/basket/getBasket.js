@@ -379,7 +379,7 @@ export default function GetBasket() {
                                         label="המשך לבקשת הצעת מחיר" 
                                         icon="pi pi-file-edit" 
                                         className="order-summary-checkout-button"
-                                        onClick={() => navigate('/quote-request')}
+                                        onClick={() => navigate('/quote-request', { state: { fromBasket: true } })}
                                     />
                                     
                                     <div className="order-summary-info">

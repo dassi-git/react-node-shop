@@ -7,10 +7,13 @@ import { Calendar } from 'primereact/calendar'
 import { Card } from 'primereact/card'
 import { Toast } from 'primereact/toast'
 import { useCreateOrderMutation } from './orderSlice'
+import { useDeletebasketMutation, useGetBasketQuery } from '../basket/basketSlise'
 
 const QuoteRequestPage = () => {
     const navigate = useNavigate()
     const [createOrder, { isLoading }] = useCreateOrderMutation()
+    const { data: basket = [], isLoading: isBasketLoading } = useGetBasketQuery()
+    const [deleteBasket] = useDeletebasketMutation()
     const toast = React.useRef(null)
 
     const [form, setForm] = useState({
@@ -38,22 +41,33 @@ const QuoteRequestPage = () => {
             return
         }
 
+        const basketItems = basket.filter((item) => item?._id && item?.name)
+        const orderItems = basketItems.length > 0
+            ? basketItems.map((item) => ({
+                productId: item._id,
+                productName: item.name,
+                quantity: Number(item.quantity || 1),
+                selectedOptions: { category: item.category || 'General' },
+                customNotes: form.notes,
+                unitPrice: Number(item.price || 0),
+                totalPrice: Number(item.price || 0) * Number(item.quantity || 1)
+            }))
+            : [{
+                productId: 'custom-order-item',
+                productName: form.productName,
+                quantity: Number(form.quantity || 1),
+                selectedOptions: {
+                    city: form.city,
+                    deliveryDate: form.deliveryDate ? new Date(form.deliveryDate).toISOString() : null,
+                    notes: form.notes
+                },
+                customNotes: form.notes,
+                unitPrice: Number(form.unitPrice || 0),
+                totalPrice: Number(form.unitPrice || 0) * Number(form.quantity || 1)
+            }]
+
         const payload = {
-            items: [
-                {
-                    productId: 'custom-order-item',
-                    productName: form.productName,
-                    quantity: Number(form.quantity || 1),
-                    selectedOptions: {
-                        city: form.city,
-                        deliveryDate: form.deliveryDate ? new Date(form.deliveryDate).toISOString() : null,
-                        notes: form.notes
-                    },
-                    customNotes: form.notes,
-                    unitPrice: Number(form.unitPrice || 0),
-                    totalPrice: Number(form.unitPrice || 0) * Number(form.quantity || 1)
-                }
-            ],
+            items: orderItems,
             deliveryDate: form.deliveryDate ? new Date(form.deliveryDate).toISOString() : null,
             deliveryAddress: {
                 city: form.city,
@@ -67,13 +81,20 @@ const QuoteRequestPage = () => {
 
         try {
             await createOrder(payload).unwrap()
+            if (basketItems.length > 0) {
+                try {
+                    await deleteBasket().unwrap()
+                } catch (clearError) {
+                    console.warn('Order created, but basket could not be cleared:', clearError)
+                }
+            }
             toast.current?.show({
                 severity: 'success',
                 summary: 'הזמנה נשלחה',
                 detail: 'בקשת ההצעת מחיר נשלחה בהצלחה למנהל',
                 life: 3000
             })
-            setTimeout(() => navigate('/profile'), 1200)
+            setTimeout(() => navigate('/my-orders'), 1200)
         } catch (error) {
             toast.current?.show({
                 severity: 'error',
@@ -126,7 +147,7 @@ const QuoteRequestPage = () => {
 
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
                         <Button label="חזרה למוצרים" className="p-button-outlined" onClick={() => navigate('/allProduct')} />
-                        <Button label={isLoading ? 'שולח...' : 'שלח בקשת הצעת מחיר'} onClick={handleSubmit} disabled={isLoading} />
+                        <Button label={isLoading ? 'שולח...' : 'שלח בקשת הצעת מחיר'} onClick={handleSubmit} disabled={isLoading || isBasketLoading} />
                     </div>
                 </div>
             </Card>

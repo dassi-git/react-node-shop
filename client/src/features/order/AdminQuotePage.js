@@ -120,6 +120,20 @@ const AdminQuotePage = () => {
                                     <div>לקוח: {order.userId?.name || 'לא ידוע'}</div>
                                     <div>סטטוס: {order.status}</div>
                                     <div>סכום: {order.totalPrice || 0} ₪</div>
+                                    <div style={{ marginTop: 10 }}><strong>פריטים שביקש הלקוח:</strong></div>
+                                    {order.items?.length ? (
+                                        <ul style={{ margin: '8px 0 12px', paddingRight: 20 }}>
+                                            {order.items.map((item, index) => (
+                                                <li key={`${order._id}-item-${index}`}>
+                                                    {item.productName} × {item.quantity} | {item.unitPrice || 0} ₪ ליחידה
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    ) : (
+                                        <div style={{ margin: '8px 0 12px' }}>לא נמצאו פריטים בהזמנה</div>
+                                    )}
+                                    {order.deliveryAddress && <div>כתובת: {order.deliveryAddress.city || '-'} {order.deliveryAddress.street || ''}</div>}
+                                    {order.notes && <div>הערות לקוח: {order.notes}</div>}
                                     <Button label="בחר להזמנה" className="p-button-outlined" onClick={() => setQuoteForm((prev) => ({ ...prev, orderId: order._id, quotePrice: order.totalPrice || 0 }))} />
                                 </div>
                             ))}
