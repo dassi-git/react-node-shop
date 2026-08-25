@@ -110,6 +110,24 @@ const QuoteRequestPage = () => {
             <Toast ref={toast} />
             <Card title="בקשת הצעת מחיר">
                 <div style={{ display: 'grid', gap: 20 }}>
+                    {basket.length > 0 && (
+                        <div style={{ border: '1px solid #e7d8cc', borderRadius: 10, padding: 16, background: '#fffaf5' }}>
+                            <h3 style={{ margin: '0 0 12px' }}>הפריטים שבחרת להצעת המחיר</h3>
+                            <div style={{ display: 'grid', gap: 10 }}>
+                                {basket.map((item) => (
+                                    <div key={item._id} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                                        <span>{item.name} × {item.quantity}</span>
+                                        <strong>{(Number(item.price || 0) * Number(item.quantity || 1)).toLocaleString('he-IL')} ₪</strong>
+                                    </div>
+                                ))}
+                            </div>
+                            <div style={{ borderTop: '1px solid #e7d8cc', marginTop: 12, paddingTop: 12, display: 'flex', justifyContent: 'space-between' }}>
+                                <strong>סכום מוצרים משוער</strong>
+                                <strong>{basket.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 1), 0).toLocaleString('he-IL')} ₪</strong>
+                            </div>
+                        </div>
+                    )}
+
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
                         <div>
                             <label>שם ההזמנה</label>
