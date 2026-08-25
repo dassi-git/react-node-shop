@@ -376,15 +376,10 @@ export default function GetBasket() {
                                     </div>
                                     
                                     <Button 
-                                        label="המשך לתשלום" 
-                                        icon="pi pi-credit-card" 
+                                        label="המשך לבקשת הצעת מחיר" 
+                                        icon="pi pi-file-edit" 
                                         className="order-summary-checkout-button"
-                                        onClick={() => toast.current.show({
-                                            severity: 'info',
-                                            summary: 'בקרוב',
-                                            detail: 'עמוד התשלום יהיה זמין בקרוב',
-                                            life: 3000
-                                        })}
+                                        onClick={() => navigate('/quote-request')}
                                     />
                                     
                                     <div className="order-summary-info">

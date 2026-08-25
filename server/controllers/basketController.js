@@ -10,7 +10,7 @@ const getId = async (req, res) => {
         });
         
         if (!myBasket) {
-            return res.status(404).json({ message: 'Basket not found for this user.' });
+            return res.json([]);
         }
         
         const populatedProductsArray = myBasket.Products.map(item => {
