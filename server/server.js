@@ -22,7 +22,11 @@ app.use(express.json())
 
 app.use("/api/user",require("./routes/user"))
 app.use("/api/product",require("./routes/product"))
+app.use("/api/bundle",require("./routes/bundle"))
 app.use("/api/basket",require("./routes/basket"))
+app.use("/api/order", require("./routes/order"))
+app.use("/api/quote", require("./routes/quote"))
+app.use("/api/payment", require("./routes/payment"))
 
 app.use((err, req, res, next) => {
     logger.error('Error:', { message: err.message, stack: err.stack })

@@ -2,9 +2,9 @@
 
 /* eslint-disable no-unused-vars */
 import { useGetAllProductQuery } from "./productSlice"
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import './allProduct.css';
-// import { ProductService } from './service/ProductService';
+import { getRelatedProducts, getBundleProducts } from './bundleHelpers';
 import { Button } from 'primereact/button';
 import { DataView, DataViewLayoutOptions } from 'primereact/dataview';
 import { Rating } from 'primereact/rating';
@@ -13,6 +13,7 @@ import { classNames } from 'primereact/utils';
 import { Skeleton } from 'primereact/skeleton';
 import { useSelector } from 'react-redux';
 import { Toast } from 'primereact/toast';
+import { InputText } from 'primereact/inputtext';
 // import { useUppdateProductMutation } from "../basket/basketSlise";
 // import DeleteProduct from "./deleteProduct";
 import { useNavigate } from "react-router-dom"
@@ -24,7 +25,17 @@ import useAuth from '../user/useAuth';
 
 const AllProduct = () => {
     const navigate = useNavigate();
-    const { data: products = [], isError, isLoading } = useGetAllProductQuery()
+    const { data: products = [], isError, isLoading, refetch } = useGetAllProductQuery()
+    const normalizedProducts = useMemo(
+        () => products.map((product, index) => ({
+            ...product,
+            _id: product._id || product.id || `product-${index}`,
+            category: product.category || product.body || 'General',
+            inventoryStatus: product.inventoryStatus || product.productExist || product.productExit || 'INSTOCK',
+            rating: Number(product.rating) || 4.5
+        })),
+        [products]
+    );
     const [updateProduct, { isLoading: isAddingToCart }] = useUpdeteProductMutation()
     const { isUserLoggedIn } = useSelector((state) => state.auth)
     const objToken = useAuth();
@@ -33,6 +44,42 @@ const AllProduct = () => {
     const [addingProductId, setAddingProductId] = useState(null);
 
     const [layout, setLayout] = useState('grid');
+    const [selectedCategory, setSelectedCategory] = useState('All');
+    const [searchTerm, setSearchTerm] = useState('');
+
+    const categoryOptions = useMemo(() => {
+        const unique = [...new Set(normalizedProducts.map((product) => product.category || 'General'))];
+        return ['All', ...unique];
+    }, [normalizedProducts]);
+
+    const filteredProducts = useMemo(() => {
+        const term = searchTerm.trim().toLowerCase();
+        let items = normalizedProducts;
+
+        if (selectedCategory && selectedCategory !== 'All') {
+            items = items.filter((product) => (product.category || 'General') === selectedCategory);
+        }
+
+        if (term) {
+            items = items.filter((product) => {
+                const name = (product.name || '').toLowerCase();
+                const category = (product.category || '').toLowerCase();
+                return name.includes(term) || category.includes(term);
+            });
+        }
+
+        return [...items].sort((a, b) => (Number(b.rating) || 0) - (Number(a.rating) || 0));
+    }, [normalizedProducts, selectedCategory, searchTerm]);
+
+    const topSellingProducts = useMemo(() => filteredProducts.slice(0, 4), [filteredProducts]);
+    const newestProducts = useMemo(() => {
+        return [...filteredProducts].sort((a, b) => {
+            const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+            return bTime - aTime;
+        }).slice(0, 4);
+    }, [filteredProducts]);
+
     const addproduct = async (id) => {
         if (!isUserLoggedIn) {
             // שמירת מזהה המוצר ב-sessionStorage
@@ -92,10 +139,12 @@ const AllProduct = () => {
 
 
     const listItem = (product, index) => {
-        return (
-            <>
+        const originalPrice = Number(product.price || 0) * 1.18;
 
-                <div className="col-12" key={product.id}>
+        return (
+            <React.Fragment key={product._id || product.id || `list-${index}`}>
+
+                <div className="col-12">
                     <div className={classNames('product-list-item flex flex-column xl:flex-row xl:align-items-start p-4 gap-4 border-round-lg', { 'border-top-1 surface-border': index !== 0 })}>
                         <img className="w-9 sm:w-16rem xl:w-10rem shadow-2 block xl:block mx-auto border-round" src={`${process.env.REACT_APP_API_URL || 'http://localhost:8888'}/${product.image}`} alt={product.name} />
 
@@ -106,14 +155,24 @@ const AllProduct = () => {
                                 <div className="flex align-items-center gap-3">
                                     <span className="flex align-items-center gap-2">
                                         <i className="pi pi-tag"></i>
-                                        <span className="font-semibold">{product.body}</span>
+                                        <span className="font-semibold">{product.category || 'General'}</span>
                                     </span>
                                     <Tag value={product.inventoryStatus} severity={getSeverity(product)}></Tag>
                                 </div>
                             </div>
                             <div className="flex sm:flex-column align-items-center sm:align-items-end gap-3 sm:gap-2">
-                                <span className="text-2xl font-semibold">${product.price}</span>
+                                <div className="product-price-stack">
+                                    <span className="old-price">${originalPrice.toFixed(2)}</span>
+                                    <span className="text-2xl font-semibold">${product.price}</span>
+                                </div>
                                 <div className="flex gap-2">
+                                    <Button 
+                                        icon="pi pi-eye" 
+                                        className="p-button-rounded p-button-info" 
+                                        onClick={() => navigate(`/product/${product._id}`)}
+                                        tooltip="צפה במוצר"
+                                        tooltipOptions={{ position: 'top' }}
+                                    />
                                     {isAdmin && (
                                         <Button 
                                             icon="pi pi-pencil" 
@@ -144,54 +203,101 @@ const AllProduct = () => {
                         </div>
                     </div>
                 </div>
-            </>
+            </React.Fragment>
         );
     };
 
 
     const gridItem = (product) => {
+        const similarProducts = getRelatedProducts(normalizedProducts, product._id, 3);
+        const originalPrice = Number(product.price || 0) * 1.18;
+        const isTopSeller = Number(product.rating || 0) >= 4.7;
+        const isNew = product.createdAt && Date.now() - new Date(product.createdAt).getTime() < 1000 * 60 * 60 * 24 * 90;
+
         return (
-            <div className="col-12 sm:col-6 lg:col-12 xl:col-4 p-2" key={product._id}  >
+            <div className="col-12 sm:col-6 lg:col-4 xl:col-3 p-2" key={product._id}>
                 <div className="product-card p-4 border-1 surface-border surface-card border-round-xl">
-                    <div className="flex flex-wrap align-items-center justify-content-between gap-2">
-                        <div className="flex align-items-center gap-2">
+                    <div className="product-card-topline">
+                        <div className="product-card-meta">
                             <i className="pi pi-tag"></i>
-                            <span className="font-semibold">{product.body}</span>
+                            <span>{product.category || 'General'}</span>
                         </div>
                         <Tag value={product.inventoryStatus} severity={getSeverity(product)}></Tag>
                     </div>
-                    <div className="flex flex-column align-items-center gap-3 py-5">
-                        <img className="w-9 shadow-2 border-round" src={`${process.env.REACT_APP_API_URL || 'http://localhost:8888'}/${product.image}`} alt={product.name} />
 
-                        <div className="text-2xl font-bold">{product.name}</div>
-                        <Rating value={product.rating} readOnly cancel={false}></Rating>
+                    <div className="product-card-badges">
+                        {isTopSeller && <span className="product-badge hot">הכי נמכר</span>}
+                        {isNew && <span className="product-badge new">הכי חדש</span>}
                     </div>
-                    <div className="flex align-items-center justify-content-between">
-                        <span className="text-2xl font-semibold">${product.price}</span>
-                        <div className="flex gap-2">
-                            {isAdmin && (
-                                <Button 
-                                    icon="pi pi-pencil" 
-                                    className="p-button-rounded p-button-warning" 
-                                    onClick={() => navigate('/updateProduct', { state: { product } })}
-                                    tooltip="ערוך מוצר"
-                                    tooltipOptions={{ position: 'top' }}
-                                />
-                            )}
+
+                    <div className="product-card-image-wrap">
+                        <img className="product-card-image" src={`${process.env.REACT_APP_API_URL || 'http://localhost:8888'}/${product.image}`} alt={product.name} />
+                    </div>
+
+                    <div className="product-card-body">
+                        <div className="product-card-name">{product.name}</div>
+                        <div className="product-card-rating-row">
+                            <Rating value={product.rating} readOnly cancel={false}></Rating>
+                            <span>{Number(product.rating || 0).toFixed(1)}</span>
+                        </div>
+                    </div>
+
+                    {similarProducts.length > 0 && (
+                        <div className="similar-products-mini">
+                            <span className="similar-products-title">מוצרים דומים</span>
+                            <div className="similar-products-list">
+                                {similarProducts.map((similar) => (
+                                    <button
+                                        key={similar._id}
+                                        type="button"
+                                        className="similar-product-pill"
+                                        onClick={() => navigate(`/product/${similar._id}`)}
+                                    >
+                                        {similar.name}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="product-card-footer">
+                        <div className="product-price-stack">
+                            <span className="old-price">${originalPrice.toFixed(2)}</span>
+                            <span className="product-card-price">${product.price}</span>
+                        </div>
+
+                        <div className="product-card-actions">
+                            <Button
+                                label="הצגה"
+                                icon="pi pi-eye"
+                                className="card-view-btn"
+                                onClick={() => navigate(`/product/${product._id}`)}
+                            />
                             {isUserLoggedIn ? (
-                                <Button 
-                                    icon={addingProductId === product._id ? "pi pi-spin pi-spinner" : "pi pi-shopping-cart"}
-                                    className="p-button-rounded" 
-                                    disabled={product.inventoryStatus === 'OUTOFSTOCK' || addingProductId === product._id} 
-                                    onClick={() => { addproduct(product._id) }}
+                                <Button
+                                    label={addingProductId === product._id ? '...' : 'לקופה'}
+                                    icon={addingProductId === product._id ? 'pi pi-spin pi-spinner' : 'pi pi-shopping-cart'}
+                                    className="card-buy-btn"
+                                    disabled={product.inventoryStatus === 'OUTOFSTOCK' || addingProductId === product._id}
+                                    onClick={() => addproduct(product._id)}
                                     loading={addingProductId === product._id}
                                 />
                             ) : (
-                                <Button 
-                                    label="התחבר" 
-                                    icon="pi pi-sign-in" 
-                                    className="p-button-sm p-button-outlined" 
+                                <Button
+                                    label="התחבר"
+                                    icon="pi pi-sign-in"
+                                    className="card-buy-btn"
                                     onClick={() => navigate('/login')}
+                                />
+                            )}
+
+                            {isAdmin && (
+                                <Button
+                                    icon="pi pi-pencil"
+                                    className="p-button-rounded p-button-warning card-icon-btn"
+                                    onClick={() => navigate('/updateProduct', { state: { product } })}
+                                    tooltip="ערוך מוצר"
+                                    tooltipOptions={{ position: 'top' }}
                                 />
                             )}
                         </div>
@@ -214,14 +320,23 @@ const AllProduct = () => {
         return <div className="grid grid-nogutter">{products.map((product, index) => itemTemplate(product, layout, index))}</div>;
     };
 
+    const bundleOffer = getBundleProducts(filteredProducts.length ? filteredProducts : normalizedProducts, 3)[0];
+
     const header = () => {
         return (
             <div className="products-header">
                 <div className="products-count">
                     <i className="pi pi-shopping-bag" style={{ marginLeft: '0.5rem' }}></i>
-                    {products.length} מוצרים זמינים
+                    {filteredProducts.length} מוצרים זמינים
                 </div>
                 <div className="products-header-actions">
+                    <div className="products-search-box">
+                        <InputText
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            placeholder="חיפוש מוצר או קטגוריה"
+                        />
+                    </div>
                     {isUserLoggedIn && (
                         <Button 
                             label="לסל הקניות" 
@@ -336,6 +451,26 @@ const AllProduct = () => {
         );
     }
 
+    if (isError) {
+        return (
+            <div className="products-page-container">
+                <Toast ref={toast} />
+                <div className="products-hero">
+                    <h1 className="products-hero-title">המוצרים שלנו</h1>
+                    <p className="products-hero-subtitle">גלה את המבחר המלא שלנו</p>
+                </div>
+                <div className="products-container">
+                    <div className="products-empty-state">
+                        <i className="pi pi-exclamation-triangle products-empty-icon"></i>
+                        <h2 className="products-empty-title">לא הצלחנו לטעון את המוצרים</h2>
+                        <p className="products-empty-text">בדוק שהשרת פעיל ונסה שוב.</p>
+                        <Button label="נסה שוב" icon="pi pi-refresh" onClick={refetch} />
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     if (products.length === 0) {
         return (
             <div className="products-page-container">
@@ -359,11 +494,82 @@ const AllProduct = () => {
         <div className="products-page-container">
             <Toast ref={toast} />
             <div className="products-hero">
-                <h1 className="products-hero-title">המוצרים שלנו</h1>
-                <p className="products-hero-subtitle">מבחר ענק של מוצרים איכותיים במחירים הכי משתלמים</p>
+                <div className="products-hero-inner">
+                    <div className="hero-copy">
+                        <span className="hero-label">קניות חכמות • משלוחים מהירים</span>
+                        <h1 className="products-hero-title">המוצרים שלנו</h1>
+                        <p className="products-hero-subtitle">מבחר ענק של מוצרים איכותיים במחירים הכי משתלמים</p>
+                    </div>
+                    <div className="hero-badges">
+                        <span>💳 תשלום מאובטח</span>
+                        <span>🚚 משלוח מהיר</span>
+                        <span>⭐ דירוגים מצוינים</span>
+                    </div>
+                </div>
             </div>
             <div className="products-container">
-                <DataView value={products} listTemplate={listTemplate} layout={layout} header={header()} />
+                {bundleOffer && (
+                    <div className="bundle-offer-card">
+                        <div className="bundle-offer-header">
+                            <span className="bundle-badge">שילוב חבילה</span>
+                            <h2>{bundleOffer.name}</h2>
+                        </div>
+                        <div className="bundle-offer-items">
+                            {bundleOffer.items.map((item) => (
+                                <div key={item._id} className="bundle-item">
+                                    <span>{item.name}</span>
+                                    <strong>${item.price}</strong>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="bundle-offer-price">
+                            <span>מחיר רגיל: ${bundleOffer.totalPrice}</span>
+                            <span className="bundle-sale">הנחה: ${bundleOffer.discount}</span>
+                            <strong>סופית: ${bundleOffer.finalPrice}</strong>
+                        </div>
+                    </div>
+                )}
+
+                <div className="category-filter-bar">
+                    {categoryOptions.map((category) => (
+                        <button
+                            key={category}
+                            type="button"
+                            className={selectedCategory === category ? 'category-chip active' : 'category-chip'}
+                            onClick={() => setSelectedCategory(category)}
+                        >
+                            {category}
+                        </button>
+                    ))}
+                </div>
+
+                <div className="product-spotlight-strip">
+                    <div className="spotlight-card">
+                        <span className="spotlight-label">הכי נמכר</span>
+                        <div className="spotlight-items">
+                            {topSellingProducts.map((item) => (
+                                <button key={item._id} className="spotlight-item" onClick={() => navigate(`/product/${item._id}`)}>
+                                    <span>{item.name}</span>
+                                    <strong>${item.price}</strong>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="spotlight-card alternate">
+                        <span className="spotlight-label">הכי חדש</span>
+                        <div className="spotlight-items">
+                            {newestProducts.map((item) => (
+                                <button key={item._id} className="spotlight-item" onClick={() => navigate(`/product/${item._id}`)}>
+                                    <span>{item.name}</span>
+                                    <strong>${item.price}</strong>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
+                <DataView value={filteredProducts} listTemplate={listTemplate} layout={layout} header={header()} />
             </div>
         </div>
     )

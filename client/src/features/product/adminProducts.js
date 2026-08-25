@@ -349,12 +349,20 @@ const [updateProduct]=useUppdateProductMutation()
                         <h1 className="admin-products-hero-title">ניהול מוצרים</h1>
                         <p className="admin-products-hero-subtitle">צפייה, עריכה והוספת מוצרים חדשים</p>
                     </div>
-                    <Button 
-                        label="הוסף מוצר חדש" 
-                        icon="pi pi-plus" 
-                        className="admin-products-add-btn"
-                        onClick={() => navigate('/adProduct')}
-                    />
+                    <div className="flex flex-wrap gap-2">
+                        <Button 
+                            label="הוסף מוצר חדש" 
+                            icon="pi pi-plus" 
+                            className="admin-products-add-btn"
+                            onClick={() => navigate('/adProduct')}
+                        />
+                        <Button 
+                            label="ניהול חבילות" 
+                            icon="pi pi-tags" 
+                            className="p-button-outlined"
+                            onClick={() => navigate('/bundle-manager')}
+                        />
+                    </div>
                 </div>
             </div>
 

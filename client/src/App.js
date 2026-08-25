@@ -8,6 +8,8 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import Layout from './components/cpmponents/layout';
 import Home from './components/Home';
 import AllProduct from './features/product/allProduct';
+import ProductDetail from './features/product/ProductDetail';
+import BundleManager from './features/product/BundleManager';
 import CaeateProduct from "./features/product/CreateProduct"
 import UpdateProduct from "./features/product/updateProduct"
 import GetBasket from './features/basket/getBasket';
@@ -17,6 +19,9 @@ import UserProfile from './features/user/UserProfile';
 import NotFound from './components/cpmponents/NotFound';
 import RequireAuth from './components/cpmponents/RequireAuth';
 import RequireAdmin from './components/cpmponents/RequireAdmin';
+import QuoteRequestPage from './features/order/QuoteRequestPage';
+import AdminQuotePage from './features/order/AdminQuotePage';
+import MyOrdersPage from './features/order/MyOrdersPage';
 
 function App() {
   return (
@@ -33,8 +38,20 @@ function App() {
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password/:token" element={<ResetPassword />} />
             <Route path="/allProduct" element={<AllProduct />} />
+            <Route path="/product/:id" element={<ProductDetail />} />
+            <Route path="/quote-request" element={<QuoteRequestPage />} />
+            <Route path="/my-orders" element={
+              <RequireAuth>
+                <MyOrdersPage />
+              </RequireAuth>
+            } />
             
             {/* Admin Routes - Protected */}
+            <Route path="/admin-quotes" element={
+              <RequireAdmin>
+                <AdminQuotePage />
+              </RequireAdmin>
+            } />
             <Route path="/adminproduct" element={
               <RequireAdmin>
                 <AdminProducts />
@@ -53,6 +70,11 @@ function App() {
             <Route path="/updateProduct" element={
               <RequireAdmin>
                 <UpdateProduct />
+              </RequireAdmin>
+            } />
+            <Route path="/bundle-manager" element={
+              <RequireAdmin>
+                <BundleManager />
               </RequireAdmin>
             } />
             

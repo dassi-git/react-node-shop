@@ -41,18 +41,26 @@ const deleteProduct = async (req, res) => {
 
 const updateProduct = async (req, res) => {
     try {
-        const { _id, name, price, body, productExit, image } = req.body
+        const { _id, name, price, body, category, rating, productExit, productExist, inventoryStatus, image } = req.body
         const updateProduct1 = await Product.findById(_id)
 
         if (!updateProduct1) {
             return res.status(404).json({ message: "Product not found" })
         }
-        
-        updateProduct1.name = name
-        updateProduct1.price = price
-        updateProduct1.body = body
-        updateProduct1.productExit = productExit
-        updateProduct1.image = image
+
+        updateProduct1.name = name || updateProduct1.name
+        updateProduct1.price = price ?? updateProduct1.price
+        updateProduct1.body = body ?? updateProduct1.body
+        updateProduct1.category = category || updateProduct1.category || "General"
+        updateProduct1.rating = rating ?? updateProduct1.rating ?? 4.5
+        updateProduct1.inventoryStatus = inventoryStatus || productExist || productExit || updateProduct1.inventoryStatus || "INSTOCK"
+        updateProduct1.productExist = updateProduct1.inventoryStatus
+
+        if (req.file) {
+            updateProduct1.image = `/uploads/${req.file.filename}`
+        } else if (image) {
+            updateProduct1.image = image
+        }
 
         const result = await updateProduct1.save()
         return res.json(result)
@@ -64,11 +72,32 @@ const updateProduct = async (req, res) => {
 
 const creatProduct = async (req, res) => {
     try {
-        const { name, price, body, productExit, image } = req.body
+        const { name, price, body, category, rating, productExit, productExist, inventoryStatus } = req.body
+
         if (!name || !price) {
             return res.status(400).json({ message: "Name and price are required" })
         }
-        const product1 = await Product.create({ name, price, body, productExit, image })
+
+        let imageUrl = ''
+        if (req.file) {
+            imageUrl = `/uploads/${req.file.filename}`
+        } else if (req.body.image) {
+            imageUrl = req.body.image
+        }
+
+        const normalizedStock = inventoryStatus || productExist || productExit || 'INSTOCK'
+
+        const product1 = await Product.create({
+            name,
+            price,
+            body,
+            category: category || 'General',
+            rating: Number(rating) || 4.5,
+            inventoryStatus: normalizedStock,
+            productExist: normalizedStock,
+            image: imageUrl
+        })
+
         return res.json(product1)
     } catch (error) {
         console.error('Error creating product:', error)
@@ -76,14 +105,5 @@ const creatProduct = async (req, res) => {
     }
 }
 
-
-
-
-
 module.exports = { deleteProduct, updateProduct, creatProduct, getAllProducts, getId }
-
-
-
-
-
 

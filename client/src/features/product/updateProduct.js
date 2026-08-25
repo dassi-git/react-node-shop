@@ -27,6 +27,8 @@ const UpdateProduct = () => {
         productExit: productFromState?.productExit || "",
         image: productFromState?.image || ""
     })
+    const [imageFile, setImageFile] = useState(null)
+    const [previewSrc, setPreviewSrc] = useState(formData.image || '')
 
     // טעינת נתונים מה-state כשהוא משתנה
     useEffect(() => {
@@ -41,6 +43,16 @@ const UpdateProduct = () => {
             });
         }
     }, [productFromState]);
+
+    useEffect(() => {
+        if (imageFile) {
+            const reader = new FileReader()
+            reader.onload = (e) => setPreviewSrc(e.target.result)
+            reader.readAsDataURL(imageFile)
+        } else {
+            setPreviewSrc(formData.image || '')
+        }
+    }, [imageFile, formData.image])
 
     useEffect(() => {
         if (isSuccess) {
@@ -76,7 +88,19 @@ const UpdateProduct = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        await updateProduct(formData);
+        // If a new file is selected, send multipart/form-data
+        if (imageFile) {
+            const data = new FormData()
+            data.append('_id', formData._id)
+            data.append('name', formData.name)
+            data.append('price', formData.price)
+            data.append('body', formData.body)
+            data.append('productExit', formData.productExit)
+            data.append('imageFile', imageFile)
+            await updateProduct(data)
+        } else {
+            await updateProduct(formData)
+        }
     }
 
     return (
@@ -163,11 +187,16 @@ const UpdateProduct = () => {
                                 />
                             </div>
 
-                            {formData.image && (
+                            <div className="form-field">
+                                <label htmlFor="imageFile">החלפת תמונה (ממחשב)</label>
+                                <input id="imageFile" type="file" accept="image/*" onChange={(e) => setImageFile(e.target.files[0])} />
+                            </div>
+
+                            {(previewSrc) && (
                                 <div className="form-field full-width">
                                     <label>תצוגה מקדימה</label>
                                     <img 
-                                        src={`${process.env.REACT_APP_API_URL || 'http://localhost:8888'}/${formData.image}`}
+                                        src={previewSrc.startsWith('http') || previewSrc.startsWith('/') ? previewSrc : previewSrc}
                                         alt="תצוגה מקדימה"
                                         style={{ 
                                             maxWidth: '200px', 

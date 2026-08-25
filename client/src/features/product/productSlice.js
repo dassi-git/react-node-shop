@@ -23,19 +23,45 @@ const productSlice=apiSlice.injectEndpoints({
             })
         }),
         uppdateProduct:build.mutation({
-            query:(product)=>({
-                url:"/product",
-                method:"PUT",
-                body:product
-            })
+            query:(product)=>{
+                // Support FormData for update as well
+                try {
+                    if (product instanceof FormData) {
+                        return {
+                            url: "/product",
+                            method: "PUT",
+                            body: product
+                        }
+                    }
+                } catch (e) {}
+                return {
+                    url:"/product",
+                    method:"PUT",
+                    body:product
+                }
+            }
         }),
 
         createProduct:build.mutation({
-            query:(product)=>({
-                url:"/product",
-                method:"POST",
-                body:product
-            })
+            query:(product)=>{
+                // If product is FormData, return it directly so fetchBaseQuery doesn't set JSON headers
+                try {
+                    if (product instanceof FormData) {
+                        return {
+                            url: "/product",
+                            method: "POST",
+                            body: product
+                        }
+                    }
+                } catch (e) {
+                    // In some Node environments FormData may not be defined; fall back to normal behavior
+                }
+                return {
+                    url: "/product",
+                    method: "POST",
+                    body: product
+                }
+            }
         })
     })
 

@@ -19,9 +19,12 @@ const CreateProduct=()=>{
         name: "",
         price: 0,
         body: "",
-        productExit: "",
+        category: "General",
+        inventoryStatus: "INSTOCK",
+        rating: 4.5,
         image: ""
     })
+    const [imageFile, setImageFile] = useState(null)
 
     useEffect(() => {
         if (isSuccess) {
@@ -57,7 +60,21 @@ const CreateProduct=()=>{
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        await register(formData);
+
+        // If an image file is selected, send multipart/form-data
+        if (imageFile) {
+            const data = new FormData()
+            data.append('name', formData.name)
+            data.append('price', formData.price)
+            data.append('body', formData.body)
+            data.append('category', formData.category)
+            data.append('inventoryStatus', formData.inventoryStatus)
+            data.append('rating', formData.rating)
+            data.append('imageFile', imageFile)
+            await register(data)
+        } else {
+            await register(formData)
+        }
     }
 
     return (
@@ -115,23 +132,54 @@ const CreateProduct=()=>{
                             </div>
 
                             <div className="form-field">
-                                <label htmlFor="productExit">מלאי</label>
+                                <label htmlFor="category">קטגוריה</label>
                                 <InputText 
-                                    id="productExit"
-                                    value={formData.productExit}
-                                    onChange={(e) => handleChange('productExit', e.target.value)}
-                                    placeholder="כמות במלאי"
+                                    id="category"
+                                    value={formData.category}
+                                    onChange={(e) => handleChange('category', e.target.value)}
+                                    placeholder="למשל: אלקטרוניקה"
                                     className="w-full"
                                 />
                             </div>
 
                             <div className="form-field">
-                                <label htmlFor="image">תמונה (URL) *</label>
+                                <label htmlFor="inventoryStatus">סטטוס מלאי</label>
+                                <InputText 
+                                    id="inventoryStatus"
+                                    value={formData.inventoryStatus}
+                                    onChange={(e) => handleChange('inventoryStatus', e.target.value)}
+                                    placeholder="INSTOCK / LOWSTOCK / OUTOFSTOCK"
+                                    className="w-full"
+                                />
+                            </div>
+
+                            <div className="form-field">
+                                <label htmlFor="rating">דירוג</label>
+                                <InputNumber 
+                                    id="rating"
+                                    value={formData.rating}
+                                    onValueChange={(e) => handleChange('rating', e.value)}
+                                    min={0}
+                                    max={5}
+                                    step={0.5}
+                                    className="w-full"
+                                />
+                            </div>
+
+                            <div className="form-field">
+                                <label htmlFor="imageFile">תמונה מהמחשב (מוצע)</label>
+                                <input
+                                    id="imageFile"
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={(e) => setImageFile(e.target.files[0])}
+                                    className="w-full"
+                                />
+                                <label htmlFor="image">או כתובת URL</label>
                                 <InputText 
                                     id="image"
                                     value={formData.image}
                                     onChange={(e) => handleChange('image', e.target.value)}
-                                    required
                                     placeholder="נתיב או URL לתמונה"
                                     className="w-full"
                                 />

@@ -22,6 +22,14 @@ const Nav = () => {
 
     return (
         <>
+            <div className="nav-top-strip">
+                <div className="nav-top-strip-inner">
+                    <span>💬 שירות לקוחות 24/7</span>
+                    <span>🚚 משלוח חינם על הזמנות מעל 200$</span>
+                    <span>🔒 תשלום מאובטח</span>
+                </div>
+            </div>
+
             <nav className="nav-sticky">
                 <div className="nav-container">
                     <Link to="/" className="nav-logo">
@@ -32,9 +40,13 @@ const Nav = () => {
                         <Link to="/">דף הבית</Link>
                         <Link to="/allProduct">מוצרים</Link>
                         {isLoggedIn && <Link to="/basket">סל קניות</Link>}
+                        {isLoggedIn && <Link to="/my-orders">הזמנות שלי</Link>}
                         {isLoggedIn && <Link to="/profile">הפרופיל שלי</Link>}
                         {roles === "Admin" && isLoggedIn && <Link to="/adminproduct">ניהול מוצרים</Link>}
+                        {roles === "Admin" && isLoggedIn && <Link to="/bundle-manager">ניהול חבילות</Link>}
                         {roles === "Admin" && isLoggedIn && <Link to="/adminusers">ניהול משתמשים</Link>}
+                        {roles === "Admin" && isLoggedIn && <Link to="/admin-quotes">הצעות מחיר</Link>}
+                        {isLoggedIn && <Link to="/quote-request">בקשת מחיר</Link>}
                         {!isLoggedIn && <Link to="/login">התחברות</Link>}
                         {!isLoggedIn && <Link to="/register">הרשמה</Link>}
                     </div>

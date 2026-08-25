@@ -4,6 +4,24 @@ const verifyJWT = require("../middleware/verifyJwt")
 const admin = require("../middleware/admin")
 
 const productController = require("../controllers/productController")
+const multer = require('multer')
+const path = require('path')
+
+// ensure uploads directory exists
+const fs = require('fs')
+const uploadsDir = path.join(__dirname, '..', 'public', 'uploads')
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true })
+
+const storage = multer.diskStorage({
+	destination: function (req, file, cb) {
+		cb(null, uploadsDir)
+	},
+	filename: function (req, file, cb) {
+		const unique = Date.now() + '-' + Math.round(Math.random() * 1E9)
+		cb(null, unique + path.extname(file.originalname))
+	}
+})
+const upload = multer({ storage })
 
 router.get("/", productController.getAllProducts)
 
@@ -30,8 +48,9 @@ if (process.env.NODE_ENV === 'development') {
 router.get("/:id", productController.getId)
 
 router.delete("/:id", [verifyJWT, admin], productController.deleteProduct)
-router.put("/", [verifyJWT, admin], productController.updateProduct)
-router.post("/", [verifyJWT, admin], productController.creatProduct)
+// Accept multipart/form-data with optional single file field `imageFile` on update
+router.put("/", [verifyJWT, admin, upload.single('imageFile')], productController.updateProduct)
+router.post("/", [verifyJWT, admin, upload.single('imageFile')], productController.creatProduct)
 
 // Development-only seed endpoint to insert example products
 if (process.env.NODE_ENV === 'development') {
