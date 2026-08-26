@@ -145,8 +145,8 @@ const UpdateProduct = () => {
                                     value={formData.price}
                                     onValueChange={(e) => handleChange('price', e.value)}
                                     mode="currency"
-                                    currency="USD"
-                                    locale="en-US"
+                                    currency="ILS"
+                                    locale="he-IL"
                                     placeholder="0.00"
                                     className="w-full"
                                     min={0}

@@ -26,7 +26,7 @@ export const getBundleProducts = (products = [], limit = 3) => {
   return [
     {
       id: 'bundle-best-seller',
-      name: 'Bundle deal',
+      name: 'חבילת פירות',
       items: bundleItems,
       totalPrice,
       discount: Math.round((totalPrice * 0.1) * 10) / 10,

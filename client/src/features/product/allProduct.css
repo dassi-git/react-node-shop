@@ -581,6 +581,11 @@
     box-shadow: 0 18px 40px rgba(17, 24, 39, 0.18);
 }
 
+.bundle-offer-card h2,
+.bundle-offer-card h3 {
+    color: #ffffff;
+}
+
 .bundle-offer-header {
     display: flex;
     align-items: center;

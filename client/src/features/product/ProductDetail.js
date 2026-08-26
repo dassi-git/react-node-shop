@@ -82,10 +82,10 @@ const ProductDetail = () => {
             </div>
 
             <div className="product-price-block">
-              <div className="product-detail-price">${product.price}</div>
+              <div className="product-detail-price">₪{product.price}</div>
               {selectedBundleData && (
                 <div className="bundle-price-tag">
-                  חבילה: ${finalBundlePrice?.toFixed(2)}
+                  חבילה: ₪{finalBundlePrice?.toFixed(2)}
                 </div>
               )}
             </div>
@@ -139,9 +139,9 @@ const ProductDetail = () => {
             <div className="similar-products-row">
               {similarProducts.map((item) => (
                 <div key={item._id} className="similar-product-card" onClick={() => navigate(`/product/${item._id}`)}>
-                  <img src={`${process.env.REACT_APP_API_URL || 'http://localhost:8888'}${item.image || ''}`} alt={item.name} />
+                  <img src={item.image ? `${process.env.REACT_APP_API_URL || 'http://localhost:8888'}${item.image.startsWith('/') ? '' : '/'}${item.image}` : '/logo.png'} alt={item.name} />
                   <div className="similar-product-name"><strong>{item.name}</strong></div>
-                  <div className="similar-product-price">${item.price}</div>
+                  <div className="similar-product-price">₪{item.price}</div>
                 </div>
               ))}
             </div>

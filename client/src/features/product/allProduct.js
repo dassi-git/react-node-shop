@@ -162,8 +162,8 @@ const AllProduct = () => {
                             </div>
                             <div className="flex sm:flex-column align-items-center sm:align-items-end gap-3 sm:gap-2">
                                 <div className="product-price-stack">
-                                    <span className="old-price">${originalPrice.toFixed(2)}</span>
-                                    <span className="text-2xl font-semibold">${product.price}</span>
+                                    <span className="old-price">₪{originalPrice.toFixed(2)}</span>
+                                    <span className="text-2xl font-semibold">₪{product.price}</span>
                                 </div>
                                 <div className="flex gap-2">
                                     <Button 
@@ -262,8 +262,8 @@ const AllProduct = () => {
 
                     <div className="product-card-footer">
                         <div className="product-price-stack">
-                            <span className="old-price">${originalPrice.toFixed(2)}</span>
-                            <span className="product-card-price">${product.price}</span>
+                            <span className="old-price">₪{originalPrice.toFixed(2)}</span>
+                            <span className="product-card-price">₪{product.price}</span>
                         </div>
 
                         <div className="product-card-actions">
@@ -518,14 +518,14 @@ const AllProduct = () => {
                             {bundleOffer.items.map((item) => (
                                 <div key={item._id} className="bundle-item">
                                     <span>{item.name}</span>
-                                    <strong>${item.price}</strong>
+                                    <strong>₪{item.price}</strong>
                                 </div>
                             ))}
                         </div>
                         <div className="bundle-offer-price">
-                            <span>מחיר רגיל: ${bundleOffer.totalPrice}</span>
-                            <span className="bundle-sale">הנחה: ${bundleOffer.discount}</span>
-                            <strong>סופית: ${bundleOffer.finalPrice}</strong>
+                            <span>מחיר רגיל: ₪{bundleOffer.totalPrice}</span>
+                            <span className="bundle-sale">הנחה: ₪{bundleOffer.discount}</span>
+                            <strong>סופית: ₪{bundleOffer.finalPrice}</strong>
                         </div>
                     </div>
                 )}
@@ -550,7 +550,7 @@ const AllProduct = () => {
                             {topSellingProducts.map((item) => (
                                 <button key={item._id} className="spotlight-item" onClick={() => navigate(`/product/${item._id}`)}>
                                     <span>{item.name}</span>
-                                    <strong>${item.price}</strong>
+                                    <strong>₪{item.price}</strong>
                                 </button>
                             ))}
                         </div>
@@ -562,7 +562,7 @@ const AllProduct = () => {
                             {newestProducts.map((item) => (
                                 <button key={item._id} className="spotlight-item" onClick={() => navigate(`/product/${item._id}`)}>
                                     <span>{item.name}</span>
-                                    <strong>${item.price}</strong>
+                                    <strong>₪{item.price}</strong>
                                 </button>
                             ))}
                         </div>
