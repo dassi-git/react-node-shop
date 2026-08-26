@@ -2,8 +2,11 @@ import { createApi, fetchBaseQuery } from
 "@reduxjs/toolkit/query/react";
 import { logOut } from './authSlice';
 
+const configuredBaseUrl = process.env.REACT_APP_API_BASE_URL || "http://localhost:8888/api/"
+const baseUrl = configuredBaseUrl.endsWith('/') ? configuredBaseUrl : `${configuredBaseUrl}/`
+
 const baseQuery = fetchBaseQuery({
-    baseUrl: process.env.REACT_APP_API_BASE_URL || "http://localhost:8888/api/",
+    baseUrl,
     credentials:"include",
     prepareHeaders:(Headers,{getState})=>{
         const token=getState().auth.token

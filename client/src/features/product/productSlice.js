@@ -4,7 +4,20 @@ const productSlice=apiSlice.injectEndpoints({
         getAllProduct:build.query({
             query:()=>({
                 url:"/product"
-            })
+            }),
+            transformResponse: (response) => {
+                if (typeof response === 'string') {
+                    try {
+                        response = JSON.parse(response)
+                    } catch (error) {
+                        return []
+                    }
+                }
+                if (Array.isArray(response)) return response
+                if (Array.isArray(response?.products)) return response.products
+                if (Array.isArray(response?.data)) return response.data
+                return []
+            }
         }),
         getProductId:build.query({
             query:(product)=>({
