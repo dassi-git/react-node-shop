@@ -21,10 +21,12 @@
 | Frontend production build במצב CI | `FIXED` | build עבר בהצלחה ללא אזהרות ESLint לאחר cleanup |
 | Backend syntax checks | `PASS` | קבצי הליבה עברו `node --check` |
 | Server dependency audit | `PASS` | `0 vulnerabilities` |
+| Authorization integration tests | `PASS` | 3 tests עברו מול MongoMemoryReplSet: משתמש רגיל נדחה, מנהל קיבל גישה ללא סיסמאות, ו־JWT שפג נדחה |
+| Failure-case integration tests | `PASS` | 3 tests עברו: מוצר חסר, מלאי שאזל, ותשלום כפול נדחו כראוי |
 | Live API smoke test | `PASS` | Frontend `200`, products `200`, protected routes `401` |
-| תרחיש משתמש מלא | `OPEN` | דורש חשבון משתמש, מנהל וסביבת DB יציבה |
-| תשלום Stripe | `BLOCKED` | חסר `STRIPE_SECRET_KEY` |
-| תשלום PayPal | `BLOCKED` | חסרים פרטי Sandbox |
+| תרחיש משתמש מלא | `PASS` | MongoDB Replica Set מקומי ו־API על `8888`: הרשמה, התחברות, פרופיל, סל, יצירת הזמנה, כניסת מנהל, יצירת הצעה ואישור הצעה עברו; סטטוס סופי `quote_accepted` |
+| תשלום Stripe | `BLOCKED` | בדיקת Checkout authenticated החזירה `503`: חסר `STRIPE_SECRET_KEY`; לא ניתן לבצע תשלום Test ללא מפתח Stripe |
+| תשלום PayPal | `BLOCKED` | בדיקת יצירת PayPal Order authenticated החזירה `503`: חסרים פרטי Sandbox |
 | Browser catalog smoke test | `PASS` | דף הקטלוג הציג 3 מוצרים ותמונות fallback תקינות |
 | Browser interaction smoke test | `PASS` | סינון, חיפוש, פתיחת מוצר וניתוב התחברות נבדקו |
 | Browser visual UX check | `PASS` | RTL, ₪, תמונות, ניגודיות וללא overflow אופקי נבדקו |
@@ -78,6 +80,32 @@
 - **מה עדיין צריך לבדוק:** Checkout מוצלח, ביטול, כשל, תשלום כפול, וחזרה מאומתת מהספק.
 - **השלב הבא:** להגדיר מפתחות Test/Sandbox ולהריץ תשלום בדיקה.
 
+### TEST-008 - Stripe Checkout חסום ללא מפתח Test
+
+- **סטטוס:** `BLOCKED`
+- **חומרה:** גבוהה לפני קבלת תשלום אמיתי.
+- **פקודה:** התחברות עם משתמש בעל הזמנה בסטטוס `quote_accepted`, ולאחר מכן `POST /api/payment/stripe/checkout` עם `orderId` תקין.
+- **תוצאה:** HTTP `503`, גוף התשובה: `Stripe is not configured. Add STRIPE_SECRET_KEY to server/.env.`
+- **מה עדיין צריך לבדוק:** להגדיר `STRIPE_SECRET_KEY` במצב Test, לבצע Checkout, לבדוק ביטול, כשל, חזרה מאומתת, התאמת סכום, webhook חתום ותשלום כפול.
+
+### TEST-009 - PayPal Sandbox חסום ללא credentials
+
+- **סטטוס:** `BLOCKED`
+- **חומרה:** גבוהה לפני קבלת תשלום אמיתי.
+- **פקודה:** `POST /api/payment/paypal/order` עם משתמש מורשה והזמנה בסטטוס `quote_accepted` או `payment_pending`.
+- **תוצאה:** HTTP `503`, גוף התשובה: `PayPal is not configured. Add sandbox credentials to server/.env.`
+- **מה עדיין צריך לבדוק:** להגדיר `PAYPAL_CLIENT_ID` ו־`PAYPAL_CLIENT_SECRET` של Sandbox, ליצור Order, לבצע Capture, לבדוק התאמת סכום ותשלום כפול.
+
+### TEST-007 - תרחיש authenticated מלא נעצר בכניסת מנהל
+
+- **סטטוס:** `FIXED`
+- **חומרה:** גבוהה לפני staging, כי שלב הצעת המחיר דורש הרשאת מנהל.
+- **פקודה:** סקריפט Node חד-פעמי מול `http://127.0.0.1:8888` שביצע הרשמה, התחברות, פרופיל, קטלוג, הוספה וקריאה של סל, יצירת הזמנה ושליפת הזמנות; לאחר מכן ניסיון התחברות עם `admin / Admin1234`.
+- **תוצאה:** `register 201`, `user login 200`, `user profile 200`, `product listing 200`, `basket add 200`, `basket read 200`, `create order 201`, `user orders 200`; `admin login 401 Unauthorized`.
+- **בדיקת סביבה:** `node server/scripts/listUsers.js` נכשל עם `ECONNREFUSED 127.0.0.1:27017`; השרת החי פועל עם fallback למסד in-memory, ולכן כלי הסקריפטים אינם רואים את נתוני השרת.
+- **תיקון סביבת בדיקה:** MongoDB הופעל כ־single-node Replica Set בשם `rs0`, וה־API הופעל מול `mongodb://127.0.0.1:27017/329166185?replicaSet=rs0`; נוצר וקודם חשבון מנהל בדיקה.
+- **בדיקה חוזרת:** התחברות משתמש `200`, שליפת הזמנות `200`, התחברות מנהל `200`, שליפת הזמנות מנהל `200`, יצירת הצעה `201`, אישור הצעה `200`; סטטוס ההזמנה הסופי `quote_accepted`.
+
 ## בדיקות שעברו
 
 ### TEST-004 - בדיקות יחידה קיימות
@@ -101,6 +129,20 @@
 - **פקודה:** `npm --prefix server audit --omit=dev`
 - **תוצאה:** `found 0 vulnerabilities`.
 - **הערה:** יש להריץ מחדש לאחר כל שינוי תלות.
+
+### TEST-010 - בדיקות integration להרשאות
+
+- **סטטוס:** `PASS`
+- **פקודה:** `node --test server/authorization.test.js`
+- **תוצאה:** 3 tests עברו מול `MongoMemoryReplSet` מבודד.
+- **כיסוי:** משתמש רגיל מקבל `403` בנתיב מנהלים, מנהל מקבל `200` ורשימת המשתמשים אינה כוללת סיסמאות, ו־JWT שפג מקבל `403`.
+
+### TEST-011 - בדיקות כשל ו־idempotency לתשלום
+
+- **סטטוס:** `FIXED`
+- **פקודה:** `node --test server/failure-cases.test.js`
+- **תוצאה:** 3 tests עברו מול `MongoMemoryReplSet`: מוצר חסר ומוצר שאזל מחזירים `400` ללא יצירת הזמנה; שליחת תשלום פנימי חוזר מחזירה `409` ונשמרת רשומת תשלום אחת.
+- **תיקון:** `createPayment` בודק תשלום קיים בסטטוס `pending` או `paid` לפני יצירת רשומה חדשה.
 
 ## תיקונים שבוצעו בעבר ונבדקו
 

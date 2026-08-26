@@ -96,6 +96,11 @@ const createPayment = async (req, res) => {
         const { order, error } = await getAuthorizedOrder(orderId, req.user)
         if (error) return res.status(error.status).json({ message: error.message })
 
+        const existingPayment = await Payment.findOne({ orderId, status: { $in: ['pending', 'paid'] } }).lean()
+        if (existingPayment) {
+            return res.status(409).json({ message: 'A payment already exists for this order.' })
+        }
+
         const payment = await Payment.create({
             orderId,
             userId: order.userId,

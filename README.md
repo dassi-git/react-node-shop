@@ -119,6 +119,12 @@ Health endpoints:
 - `GET /health` confirms that the server process is running.
 - `GET /ready` confirms that the server is connected to MongoDB.
 
+### Working With The Project
+
+For the prioritized work queue, definition of done, validation order, and a
+copy-paste prompt for the next development session, read
+[`docs/WORKFLOW.md`](docs/WORKFLOW.md).
+
 ## 🔒 Security Features
 
 ### Rate Limits
