@@ -24,6 +24,7 @@ import AdminQuotePage from './features/order/AdminQuotePage';
 import MyOrdersPage from './features/order/MyOrdersPage';
 import AdminOrdersPage from './features/order/AdminOrdersPage';
 import PaymentSuccessPage from './features/order/PaymentSuccessPage';
+import SeasonManagementPage from './features/season/SeasonManagementPage';
 
 function App() {
   return (
@@ -91,6 +92,11 @@ function App() {
             <Route path="/bundle-manager" element={
               <RequireAdmin>
                 <BundleManager />
+              </RequireAdmin>
+            } />
+            <Route path="/admin-seasons" element={
+              <RequireAdmin>
+                <SeasonManagementPage />
               </RequireAdmin>
             } />
             

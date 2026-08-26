@@ -1,6 +1,5 @@
-const { type } = require("express/lib/response")
-const mongoose=require("mongoose")
-const userSchema= new mongoose.Schema(
+const mongoose = require('mongoose')
+const userSchema = new mongoose.Schema(
     {
         name:{
             type:String,
@@ -9,6 +8,7 @@ const userSchema= new mongoose.Schema(
         userName:{
             type:String,
             required:true,
+            trim:true,
         },
         address:{
             type:String,
@@ -21,6 +21,8 @@ const userSchema= new mongoose.Schema(
         email:{
             type:String,
             required:true,
+            trim:true,
+            lowercase:true,
         },
         password:{
             type:String,

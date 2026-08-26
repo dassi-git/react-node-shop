@@ -54,9 +54,11 @@ const connectDB = async () => {
       connectTimeoutMS: 5000
     })
     await seedDevelopmentProducts()
-    console.log('Connected to MongoDB successfully')
+    return mongoose.connection
   } catch (err) {
-    console.log('Local MongoDB not available, starting in-memory MongoDB...')
+    if (process.env.NODE_ENV === 'production') throw err
+
+    console.warn('Local MongoDB not available, starting in-memory MongoDB...')
     try {
       const mongoServer = await MongoMemoryServer.create()
       const uri = mongoServer.getUri()
@@ -65,9 +67,10 @@ const connectDB = async () => {
         connectTimeoutMS: 5000
       })
       await seedDevelopmentProducts()
-      console.log('Connected to in-memory MongoDB successfully')
+      return mongoose.connection
     } catch (memoryErr) {
-      console.error('Failed to connect to MongoDB and memory DB:', memoryErr)
+      memoryErr.message = `Failed to connect to MongoDB and memory DB: ${memoryErr.message}`
+      throw memoryErr
     }
   }
 }

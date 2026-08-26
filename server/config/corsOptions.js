@@ -1,13 +1,14 @@
-const allowedOrigins = [
+const allowedOrigins = (process.env.CLIENT_URL
+    ? process.env.CLIENT_URL.split(',')
+    : [
     'http://localhost:3000',
     'http://localhost:8888',
     'http://localhost:3002',
-     
-]
+    ]).map((origin) => origin.trim()).filter(Boolean)
 
 const corsOptions = {
     origin: (origin, callback) => {
-        if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
+        if (!origin || allowedOrigins.includes(origin)) {
             callback(null, true)
         } else {
             callback(new Error('Not allowed by CORS'))

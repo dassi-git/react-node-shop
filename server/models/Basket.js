@@ -1,5 +1,4 @@
 const mongoose = require("mongoose")
-const { type } = require("express/lib/response")
 const basketScema = new mongoose.Schema({
     userId: {
         type: mongoose.ObjectId,
@@ -16,6 +15,23 @@ const basketScema = new mongoose.Schema({
         quantity: {
             type: Number,
             default: 1
+        },
+        selectedOptions: {
+            type: mongoose.Schema.Types.Mixed,
+            default: {}
+        },
+        optionPriceAdjustment: {
+            type: Number,
+            min: 0,
+            default: 0
+        },
+        seasonalSnapshot: {
+            type: mongoose.Schema.Types.Mixed,
+            default: []
+        },
+        seasonalDate: {
+            type: Date,
+            default: null
         }
     }]
 

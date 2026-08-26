@@ -30,6 +30,15 @@
 | Browser visual UX check | `PASS` | RTL, ₪, תמונות, ניגודיות וללא overflow אופקי נבדקו |
 | Login and protected-route UX check | `PASS` | מסך התחברות תקין וכניסה לא מורשית לסל הופנתה להתחברות |
 | Advanced catalog filters | `PASS` | טווח מחיר, דירוג, זמינות, מיון ואיפוס נבדקו בדפדפן ללא overflow |
+| Product customization build and syntax | `PASS` | אפשרויות מוצר, בחירות קונה, סל ותמחור הזמנה נבנו; React build ו-node --check עברו |
+| Product multi-image build and syntax | `PASS` | העלאה/URL עד 7 תמונות וגלריית מוצר נבנו; React build ו-node --check עברו |
+| Seasonal fruit feature build and syntax | `PASS` | API גלובלי, מסך מנהל, תצוגת מוצר ואימות סל/הזמנה נבנו; React build ו-node --check עברו |
+| Seasonal snapshot order views | `PASS` | snapshot עונתי ותוספת premium מוצגים בהיסטוריית הלקוח ובפרטי הזמנה למנהל |
+| Explicit product-to-season fruit link | `PASS` | ערכי פירות כוללים `fruitKey` מפורש והשרת/לקוח פותרים עונתיות לפי אותו מפתח |
+| Product fruit selection limits | `PASS` | `maxSelections` ותוספת לכל פרי נוסף נאכפים בשרת ומוצגים בממשק הקונה |
+| Seasonal public API smoke test | `PASS` | `/api/fruit-season` ו־`?date=2026-08-26` החזירו `200` עם רשימת עונות ריקה בסביבת in-memory |
+| Seasonal admin authorization smoke test | `PASS` | `/api/fruit-season/admin` ללא token החזיר `401` |
+| Running app smoke test | `PASS` | API על `8888`, React על `3000`, root ונתיב SPA החזירו `200` לאחר האתחול |
 
 ## כשלי בדיקה פתוחים
 
@@ -114,6 +123,15 @@
 - `FIX-017` - מחירים, כותרות bundle ותמונות דומות יושרו לעברית ולשקלים עם ניגודיות ו־fallback תקינים.
 - `FIX-018` - סל הקניות יושר למטבע ₪ וקיבל fallback לתמונות חסרות.
 - `FIX-019` - טווח המחיר של הסינון המתקדם מסתנכרן מיד עם נתוני הקטלוג ולא מסתיר מוצרים בזמן טעינה.
+- `FIX-020` - נוספו אפשרויות התאמה לכל מוצר עם בחירה יחידה/מרובה, חובה/רשות, זמינות ותוספות מחיר.
+- `FIX-021` - הבחירות נשמרות ב-snapshot בסל ובהזמנה, והשרת מחשב ומאמת את מחיר ההתאמות.
+- `FIX-022` - נוסף עורך מנהל להגדרת קבוצות, ערכים ותוספות מחיר ביצירה ובעדכון מוצר.
+- `FIX-023` - מוצר תומך בעד 7 תמונות, העלאה מרובה, כתובות URL וגלריה לבחירת תמונה.
+- `FIX-024` - נוספה מערכת עונתיות גלובלית עם תקופות, Preview, סטטוס, תוספת מחיר ו-soft cancel.
+- `FIX-025` - עונתיות נאכפת בסל ובהזמנה ונשמרת ב-snapshot להצגת ההקשר ההיסטורי.
+- `FIX-026` - snapshot עונתי מוצג ללקוח ולמנהל בפרטי ההזמנה.
+- `FIX-027` - נוסף קישור מפורש `fruitKey` בין ערכי פירות במוצר לקטלוג העונתיות.
+- `FIX-028` - נוספו מגבלת מספר פירות ותוספת מחיר לכל פרי מעבר לראשון לפי הגדרת המוצר.
 
 ## סדר בדיקות להמשך
 
@@ -126,3 +144,5 @@
 7. להריץ בדיקות UI/UX ידניות לפי `PRODUCTION_READINESS_CHECKLIST.md`.
 8. לתעד כל כשל חדש כאן לפני תיקון.
 9. להריץ regression מלא אחרי כל תיקון.
+10. לבדוק בדפדפן מוצר עם אפשרויות, שתי התאמות שונות לאותו מוצר, והזמנה מלאה בסביבת staging.
+11. ליצור חשבון מנהל בדיקה, להוסיף עונת `mango`, ולהריץ תרחיש premium/available/unavailable מלא מול מוצר אמיתי.

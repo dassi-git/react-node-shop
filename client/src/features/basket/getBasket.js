@@ -59,8 +59,8 @@ export default function GetBasket() {
 
     const deleteProduct = async () => {
         try {
-            await register(product._id).unwrap();
-            let _products = products.filter((val) => val._id !== product._id);
+            await register(product._basketItemId || product._id).unwrap();
+            let _products = products.filter((val) => (val._basketItemId || val._id) !== (product._basketItemId || product._id));
             setProducts(_products);
             toast.current.show({ severity: 'success', summary: 'הצלחה', detail: 'המוצר הוסר מהסל', life: 3000 });
             setDeleteProductDialog(false);
@@ -114,6 +114,16 @@ export default function GetBasket() {
                         <h3 className="basket-item-name">{product.name}</h3>
                         <Rating value={product.rating} readOnly cancel={false} className="basket-item-rating" />
                         <p className="basket-item-description">{product.body}</p>
+                        {product.selectedOptions && Object.keys(product.selectedOptions).length > 0 && (
+                            <div className="basket-item-options">
+                                {Object.entries(product.selectedOptions).map(([name, value]) => (
+                                    <div key={name}><strong>{name}:</strong> {Array.isArray(value) ? value.join(', ') : value}</div>
+                                ))}
+                                {(product.seasonalSnapshot || []).map((season) => (
+                                    <div key={season.fruitKey}><strong>עונתיות:</strong> {season.displayName} {season.status === 'premium' ? `(+${season.priceAdjustment} ₪)` : ''}</div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                     
                     {/* Quantity Controls */}
@@ -134,7 +144,7 @@ export default function GetBasket() {
                                 rounded 
                                 outlined 
                                 severity="success"
-                                onClick={() => handleIncreaseQuantity(product._id)}
+                                onClick={() => handleIncreaseQuantity(product)}
                             />
                         </div>
                     </div>
@@ -174,10 +184,10 @@ export default function GetBasket() {
         } else {
             // הפחתת כמות - מחיקה אחת
             try {
-                await register(product._id).unwrap();
+                await register(product._basketItemId || product._id).unwrap();
                 // עדכון מקומי של הכמות
                 const updatedProducts = products.map(p => 
-                    p._id === product._id ? { ...p, quantity: p.quantity - 1 } : p
+                    (p._basketItemId || p._id) === (product._basketItemId || product._id) ? { ...p, quantity: p.quantity - 1 } : p
                 );
                 setProducts(updatedProducts);
                 toast.current.show({ 
@@ -197,12 +207,12 @@ export default function GetBasket() {
         }
     };
     
-    const handleIncreaseQuantity = async (productId) => {
+    const handleIncreaseQuantity = async (product) => {
         try {
-            await plus(productId).unwrap();
+            await plus({ id: product._id, selectedOptions: product.selectedOptions || {}, seasonalDate: product.seasonalDate }).unwrap();
             // עדכון מקומי של הכמות
             const updatedProducts = products.map(p => 
-                p._id === productId ? { ...p, quantity: p.quantity + 1 } : p
+                (p._basketItemId || p._id) === (product._basketItemId || product._id) ? { ...p, quantity: p.quantity + 1 } : p
             );
             setProducts(updatedProducts);
             toast.current.show({ 

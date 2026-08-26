@@ -44,6 +44,7 @@ const Nav = () => {
                         {isLoggedIn && <Link to="/profile">הפרופיל שלי</Link>}
                         {roles === "Admin" && isLoggedIn && <Link to="/adminproduct">ניהול מוצרים</Link>}
                         {roles === "Admin" && isLoggedIn && <Link to="/bundle-manager">ניהול חבילות</Link>}
+                        {roles === "Admin" && isLoggedIn && <Link to="/admin-seasons">ניהול עונתיות</Link>}
                         {roles === "Admin" && isLoggedIn && <Link to="/adminusers">ניהול משתמשים</Link>}
                         {roles === "Admin" && isLoggedIn && <Link to="/admin-quotes">הצעות מחיר</Link>}
                         {roles === "Admin" && isLoggedIn && <Link to="/admin-orders">ניהול הזמנות</Link>}

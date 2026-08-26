@@ -9,6 +9,7 @@ import { Button } from 'primereact/button';
 import { Toast } from 'primereact/toast';
 import { Card } from 'primereact/card';
 import './CreateProduct.css';
+import CustomizationEditor from './CustomizationEditor';
 
 const CreateProduct=()=>{
     const [register, { isError, isSuccess, error, isLoading }] = useCreateProductMutation()
@@ -22,9 +23,11 @@ const CreateProduct=()=>{
         category: "General",
         inventoryStatus: "INSTOCK",
         rating: 4.5,
-        image: ""
+        image: "",
+        images: [],
+        customizationOptions: []
     })
-    const [imageFile, setImageFile] = useState(null)
+    const [imageFiles, setImageFiles] = useState([])
 
     useEffect(() => {
         if (isSuccess) {
@@ -58,11 +61,28 @@ const CreateProduct=()=>{
         })
     }
 
+    const updateImageUrl = (index, value) => {
+        const images = [...(formData.images || [])]
+        images[index] = value
+        handleChange('images', images)
+        if (index === 0) handleChange('image', value)
+    }
+
+    const addImageUrl = () => {
+        if ((formData.images || []).length < 7) handleChange('images', [...(formData.images || []), ''])
+    }
+
+    const removeImageUrl = (index) => {
+        const images = (formData.images || []).filter((_, imageIndex) => imageIndex !== index)
+        handleChange('images', images)
+        handleChange('image', images[0] || '')
+    }
+
     const handleSubmit = async (e) => {
         e.preventDefault();
 
         // If an image file is selected, send multipart/form-data
-        if (imageFile) {
+        if (imageFiles.length > 0) {
             const data = new FormData()
             data.append('name', formData.name)
             data.append('price', formData.price)
@@ -70,7 +90,9 @@ const CreateProduct=()=>{
             data.append('category', formData.category)
             data.append('inventoryStatus', formData.inventoryStatus)
             data.append('rating', formData.rating)
-            data.append('imageFile', imageFile)
+            imageFiles.forEach((file) => data.append('imageFiles', file))
+            data.append('images', JSON.stringify(formData.image ? [formData.image] : []))
+            data.append('customizationOptions', JSON.stringify(formData.customizationOptions))
             await register(data)
         } else {
             await register(formData)
@@ -130,6 +152,9 @@ const CreateProduct=()=>{
                                     className="w-full"
                                 />
                             </div>
+                            <div className="form-field full-width">
+                                <CustomizationEditor value={formData.customizationOptions} onChange={(customizationOptions) => handleChange('customizationOptions', customizationOptions)} />
+                            </div>
 
                             <div className="form-field">
                                 <label htmlFor="category">קטגוריה</label>
@@ -167,22 +192,32 @@ const CreateProduct=()=>{
                             </div>
 
                             <div className="form-field">
-                                <label htmlFor="imageFile">תמונה מהמחשב (מוצע)</label>
+                                <label htmlFor="imageFiles">תמונות מהמחשב (עד 7)</label>
                                 <input
-                                    id="imageFile"
+                                    id="imageFiles"
                                     type="file"
                                     accept="image/*"
-                                    onChange={(e) => setImageFile(e.target.files[0])}
+                                    multiple
+                                    onChange={(e) => setImageFiles(Array.from(e.target.files).slice(0, 7))}
                                     className="w-full"
                                 />
-                                <label htmlFor="image">או כתובת URL</label>
+                                <label htmlFor="image">כתובת URL לתמונה ראשית</label>
                                 <InputText 
                                     id="image"
                                     value={formData.image}
-                                    onChange={(e) => handleChange('image', e.target.value)}
+                                    onChange={(e) => updateImageUrl(0, e.target.value)}
                                     placeholder="נתיב או URL לתמונה"
                                     className="w-full"
                                 />
+                                <div style={{ display: 'grid', gap: 8, marginTop: 8 }}>
+                                    {(formData.images || []).slice(1).map((image, index) => (
+                                        <div key={index + 1} style={{ display: 'flex', gap: 8 }}>
+                                            <InputText value={image} onChange={(e) => updateImageUrl(index + 1, e.target.value)} placeholder={`כתובת URL לתמונה ${index + 2}`} className="w-full" />
+                                            <Button type="button" icon="pi pi-times" text severity="danger" onClick={() => removeImageUrl(index + 1)} tooltip="הסר כתובת" />
+                                        </div>
+                                    ))}
+                                    {(formData.images || []).length < 7 && <Button type="button" label="הוסף כתובת URL" icon="pi pi-plus" outlined onClick={addImageUrl} />}
+                                </div>
                             </div>
                         </div>
 

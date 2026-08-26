@@ -21,7 +21,16 @@ const storage = multer.diskStorage({
 		cb(null, unique + path.extname(file.originalname))
 	}
 })
-const upload = multer({ storage })
+const upload = multer({
+	storage,
+	limits: { fileSize: 5 * 1024 * 1024, files: 8 },
+	fileFilter: (req, file, cb) => {
+		if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype)) {
+			return cb(new Error('Only JPEG, PNG and WebP images are supported.'))
+		}
+		cb(null, true)
+	}
+})
 
 router.get("/", productController.getAllProducts)
 
@@ -51,8 +60,11 @@ if (process.env.NODE_ENV === 'development') {
 router.get("/:id", productController.getId)
 
 router.delete("/:id", [verifyJWT, admin], productController.deleteProduct)
-// Accept multipart/form-data with optional single file field `imageFile` on update
-router.put("/", [verifyJWT, admin, upload.single('imageFile')], productController.updateProduct)
-router.post("/", [verifyJWT, admin, upload.single('imageFile')], productController.creatProduct)
+const imageUpload = upload.fields([
+	{ name: 'imageFile', maxCount: 1 },
+	{ name: 'imageFiles', maxCount: 7 }
+])
+router.put("/", [verifyJWT, admin, imageUpload], productController.updateProduct)
+router.post("/", [verifyJWT, admin, imageUpload], productController.creatProduct)
 
 module.exports = router

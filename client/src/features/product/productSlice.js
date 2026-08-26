@@ -21,8 +21,7 @@ const productSlice=apiSlice.injectEndpoints({
         }),
         getProductId:build.query({
             query:(product)=>({
-                url:"/product/id",
-                body:product
+                url:`/product/${product}`
             })
         }),
 

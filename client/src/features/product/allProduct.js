@@ -145,7 +145,7 @@ const AllProduct = () => {
         setAddingProductId(id);
         
         try {
-            await updateProduct(id).unwrap();
+            await updateProduct({ id }).unwrap();
             toast.current.show({ 
                 severity: 'success', 
                 summary: 'נוסף בהצלחה', 
@@ -228,11 +228,12 @@ const AllProduct = () => {
                                     )}
                                     {isUserLoggedIn ? (
                                         <Button 
-                                            icon={addingProductId === product._id ? "pi pi-spin pi-spinner" : "pi pi-shopping-cart"}
+                                            icon={product.customizationOptions?.length ? "pi pi-sliders-h" : addingProductId === product._id ? "pi pi-spin pi-spinner" : "pi pi-shopping-cart"}
                                             className="p-button-rounded" 
                                             disabled={product.inventoryStatus === 'OUTOFSTOCK' || addingProductId === product._id} 
-                                            onClick={() => { addproduct(product._id) }}
+                                            onClick={() => product.customizationOptions?.length ? navigate(`/product/${product._id}`) : addproduct(product._id)}
                                             loading={addingProductId === product._id}
+                                            tooltip={product.customizationOptions?.length ? 'בחר התאמות' : 'הוסף לסל'}
                                         />
                                     ) : (
                                         <Button 
@@ -319,11 +320,11 @@ const AllProduct = () => {
                             />
                             {isUserLoggedIn ? (
                                 <Button
-                                    label={addingProductId === product._id ? '...' : 'לקופה'}
-                                    icon={addingProductId === product._id ? 'pi pi-spin pi-spinner' : 'pi pi-shopping-cart'}
+                                    label={product.customizationOptions?.length ? 'בחר התאמות' : addingProductId === product._id ? '...' : 'לקופה'}
+                                    icon={product.customizationOptions?.length ? 'pi pi-sliders-h' : addingProductId === product._id ? 'pi pi-spin pi-spinner' : 'pi pi-shopping-cart'}
                                     className="card-buy-btn"
                                     disabled={product.inventoryStatus === 'OUTOFSTOCK' || addingProductId === product._id}
-                                    onClick={() => addproduct(product._id)}
+                                    onClick={() => product.customizationOptions?.length ? navigate(`/product/${product._id}`) : addproduct(product._id)}
                                     loading={addingProductId === product._id}
                                 />
                             ) : (

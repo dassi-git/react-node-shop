@@ -24,7 +24,9 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
     
     const isAuthEndpoint = url?.includes('/user/login') || url?.includes('/user/register');
     
-    if (result?.error?.status === 401 && !isAuthEndpoint) {
+    const authMessage = result?.error?.data?.message || '';
+    const tokenExpired = result?.error?.status === 403 && authMessage.includes('Invalid or expired token');
+    if ((result?.error?.status === 401 || tokenExpired) && !isAuthEndpoint) {
         alert('החיבור פקע, נא להתחבר מחדש');
         api.dispatch(logOut());
         window.location.href = '/login';
@@ -36,6 +38,7 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
 const apiSlice=createApi({
     reducerPath:"api",
     baseQuery: baseQueryWithReauth,
+    tagTypes:["User", "Product", "Basket", "Order", "Quote", "Payment", "Season"],
     endpoints:()=>({})
 })
 export default apiSlice

@@ -46,6 +46,15 @@
   background: linear-gradient(135deg, #e2e8f0, #f1f5f9);
   border: 1px solid #dfe7f3;
   display: block;
+  padding: 0;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .thumb.active {

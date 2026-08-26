@@ -2,11 +2,29 @@ const Order = require('../models/Order')
 const Quote = require('../models/Quote')
 const Product = require('../models/Product')
 const mongoose = require('mongoose')
+const { resolveSeasonalSelections } = require('../services/fruitSeasonService')
 
 const generateOrderNumber = () => {
-    const date = new Date()
-    const stamp = date.getTime().toString().slice(-8)
-    return `ORD-${stamp}`
+    const timestamp = Date.now().toString(36).toUpperCase()
+    const entropy = Math.random().toString(36).slice(2, 8).toUpperCase()
+    return `ORD-${timestamp}-${entropy}`
+}
+
+const resolveSelectedOptions = (product, selectedOptions = {}) => {
+    const normalized = {}
+    let adjustment = 0
+    for (const option of product.customizationOptions || []) {
+        const selected = Array.isArray(selectedOptions[option.name]) ? selectedOptions[option.name] : (selectedOptions[option.name] ? [selectedOptions[option.name]] : [])
+        if (option.required && selected.length === 0) throw new Error(`יש לבחור ${option.name}`)
+        if (option.selectionType === 'single' && selected.length > 1) throw new Error(`ניתן לבחור ערך אחד בלבד ב-${option.name}`)
+        if (option.maxSelections && selected.length > option.maxSelections) throw new Error(`ניתן לבחור עד ${option.maxSelections} אפשרויות ב-${option.name}`)
+        const values = selected.map((value) => option.values.find((item) => item.value === value && item.active !== false))
+        if (values.some((value) => !value)) throw new Error(`בחירה לא זמינה ב-${option.name}`)
+        normalized[option.name] = option.selectionType === 'single' ? (selected[0] || '') : selected
+        adjustment += values.reduce((sum, value) => sum + Number(value?.priceAdjustment || 0), 0)
+        if (option.selectionType === 'multiple' && selected.length > 1) adjustment += (selected.length - 1) * Number(option.additionalSelectionPrice || 0)
+    }
+    return { selectedOptions: normalized, adjustment }
 }
 
 const createOrder = async (req, res) => {
@@ -22,9 +40,19 @@ const createOrder = async (req, res) => {
             const isProductId = mongoose.isValidObjectId(item.productId)
             const product = isProductId ? await Product.findById(item.productId).lean() : null
             if (isProductId && !product) throw new Error('Product no longer exists.')
-            if (product && product.inventoryStatus === 'OUTOFSTOCK') throw new Error(`${product.name} is out of stock.`)
+            if (product && (product.inventoryStatus === 'OUTOFSTOCK' || product.productExist === 'OUTOFSTOCK')) throw new Error(`${product.name} is out of stock.`)
             if (product && quantity > product.quantity) throw new Error(`${product.name} does not have enough stock.`)
-            const unitPrice = product ? Number(product.price) : Number(item.unitPrice || 0)
+            let selectedOptions = item.selectedOptions || {}
+            let optionAdjustment = 0
+            if (product) {
+                const resolved = resolveSelectedOptions(product, selectedOptions)
+                selectedOptions = resolved.selectedOptions
+                optionAdjustment = resolved.adjustment
+                const seasonal = await resolveSeasonalSelections(product, selectedOptions, deliveryDate || new Date())
+                optionAdjustment += seasonal.adjustment
+                var seasonalSnapshot = seasonal.snapshots
+            }
+            const unitPrice = product ? Number(product.price) + optionAdjustment : Number(item.unitPrice || 0)
             if (!Number.isInteger(quantity) || quantity < 1 || quantity > 100) {
                 throw new Error('Quantity must be a whole number between 1 and 100.')
             }
@@ -37,7 +65,8 @@ const createOrder = async (req, res) => {
                 productId: item.productId,
                 productName: product?.name || item.productName || 'Custom fruit arrangement',
                 quantity,
-                selectedOptions: item.selectedOptions || {},
+                selectedOptions,
+                seasonalSnapshot: seasonalSnapshot || [],
                 customNotes: item.customNotes || '',
                 unitPrice,
                 totalPrice
@@ -56,7 +85,7 @@ const createOrder = async (req, res) => {
         try {
             for (const item of productItems) {
                 const reserved = await Product.findOneAndUpdate(
-                    { _id: item.productId, quantity: { $gte: item.quantity }, inventoryStatus: { $ne: 'OUTOFSTOCK' } },
+                    { _id: item.productId, quantity: { $gte: item.quantity }, inventoryStatus: { $ne: 'OUTOFSTOCK' }, productExist: { $ne: 'OUTOFSTOCK' } },
                     { $inc: { quantity: -item.quantity } },
                     { new: true }
                 )
@@ -94,7 +123,7 @@ const createOrder = async (req, res) => {
         }
     } catch (error) {
         console.error('Error creating order:', error)
-        if (error.message.includes('Quantity must') || error.message.includes('Unit price must') || error.message.includes('Product no longer') || error.message.includes('out of stock') || error.message.includes('does not have enough stock')) {
+        if (error.message.includes('Quantity must') || error.message.includes('Unit price must') || error.message.includes('Product no longer') || error.message.includes('out of stock') || error.message.includes('does not have enough stock') || error.message.includes('יש לבחור') || error.message.includes('בחירה לא זמינה') || error.message.includes('ניתן לבחור ערך')) {
             return res.status(400).json({ message: error.message })
         }
         return res.status(500).json({ message: 'Server error creating order' })
@@ -131,6 +160,9 @@ const getAllOrders = async (req, res) => {
 const getOrderById = async (req, res) => {
     try {
         const { id } = req.params
+        if (!mongoose.isValidObjectId(id)) {
+            return res.status(400).json({ message: 'Invalid order ID' })
+        }
         const order = await Order.findById(id).populate('quote').populate('userId', 'name email phone')
 
         if (!order) {
@@ -152,6 +184,10 @@ const updateOrderStatus = async (req, res) => {
     try {
         const { id } = req.params
         const { status } = req.body
+
+        if (!mongoose.isValidObjectId(id)) {
+            return res.status(400).json({ message: 'Invalid order ID' })
+        }
 
         const allowedStatuses = [
             'draft',
@@ -195,6 +231,9 @@ const updateOrderStatus = async (req, res) => {
 const acceptQuote = async (req, res) => {
     try {
         const { id } = req.params
+        if (!mongoose.isValidObjectId(id)) {
+            return res.status(400).json({ message: 'Invalid order ID' })
+        }
         const order = await Order.findById(id).populate('quote')
 
         if (!order) {
@@ -205,7 +244,7 @@ const acceptQuote = async (req, res) => {
             return res.status(403).json({ message: 'Forbidden: cannot approve this order' })
         }
 
-        const quote = await Quote.findById(order.quote)
+        const quote = await Quote.findById(order.quote?._id || order.quote)
         if (!quote) {
             return res.status(404).json({ message: 'No quote exists for this order' })
         }

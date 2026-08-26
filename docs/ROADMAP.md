@@ -13,6 +13,7 @@
 - Role-based access: user / admin
 - Product catalog
 - Product images
+- Up to 7 images per product with admin upload/URL management and customer gallery
 - Basic admin panel
 
 ### דוגמאות ל-Goals
@@ -33,6 +34,16 @@
 ### פונקציות
 - Add to cart
 - Custom options per product
+- Global seasonal fruit availability and pricing
+- Admin customization editor per product:
+	- option groups such as fruits, size/weight, design, add-ons and greeting card
+	- single-select or multi-select behavior
+	- required/optional group setting
+	- active/inactive values
+	- display ordering
+	- per-value price adjustment in ILS
+	- maximum number of fruit selections per product
+	- additional price for each fruit beyond the first
 - Delivery date selector
 - Shipping details
 - Quote request form
@@ -43,8 +54,16 @@
 
 ### תוצאות רצויות
 - הלקוח ממלא הזמנה ולא משלם עדיין
+- הלקוח בוחר רק אפשרויות שהוגדרו למגש המסוים ורואה מחיר ביניים מעודכן
 - המנהל בודק ומציב מחיר
 - הלקוח מאשר או דוחה
+
+### כלל תמחור והתמדה
+
+מחיר שורת סל מחושב כך: `(מחיר בסיס + סכום תוספות הבחירה) × כמות`.
+הלקוח שולח למערכת מזהי ערכים בלבד. השרת מאמת את הבחירות מול המוצר ומחשב את המחיר מחדש.
+בסל ובהזמנה נשמר snapshot של הבחירות, התוויות והתוספות, כדי שהיסטוריית ההזמנה תישאר נכונה גם
+אחרי שהמנהל משנה את קטלוג האפשרויות.
 
 ---
 
@@ -141,13 +160,70 @@
 1. Users + Auth
 2. Products + Categories
 3. Custom product options
-4. Cart
-5. Quote request workflow
-6. Admin quote approval
-7. Payment flow
-8. Order statuses
-9. Delivery management
-10. Dashboard and analytics
+4. Global seasonal fruit rules
+5. Cart
+6. Quote request workflow
+7. Admin quote approval
+8. Payment flow
+9. Order statuses
+10. Delivery management
+11. Dashboard and analytics
+
+## מערכת עונתיות גלובלית
+
+### עקרון
+
+המנהל מנהל קטלוג פירות ועונות במקום אחד. כל מוצר מפנה ל־`fruitKey`, והמערכת מחילה את
+הסטטוס והתוספת הפעילים על כל מוצר שמכיל את הפרי.
+
+הקישור הוא שדה נתונים מפורש `fruitKey` בתוך ערך הפרי במוצר, ולא התאמה לפי שם תצוגה. המנהל
+מגדיר במוצר את כל פירות המגש האפשריים מכל העונות; רק התצוגה וההזמנה מסוננות לפי העונה הפעילה.
+
+### זרימת מנהל
+
+1. המנהל פותח את מסך ניהול העונתיות.
+2. בוחר פרי ומגדיר תקופה, סטטוס ותוספת מחיר.
+3. המערכת בודקת שאין תקופה חופפת לאותו פרי.
+4. המנהל שומר או מתזמן תקופה עתידית.
+5. המערכת מציגה preview של המצב שיופיע בתאריך נתון.
+
+### זרימת משתמש
+
+1. המשתמש פותח מוצר שמכיל קבוצת פירות.
+2. השרת מחזיר את סטטוס העונה לפי תאריך המשלוח.
+3. המשתמש רואה רק פירות זמינים, ותוספת ליד פירות premium.
+4. המחיר מתעדכן בזמן אמת.
+5. בעת הוספה לסל ובהזמנה השרת מאמת מחדש זמינות ותמחור.
+
+### החלטות תכנון
+
+- ברירת המחדל היא שתאריך המשלוח קובע את העונה.
+- תוספת העונה מצטברת עם תוספות המוצר ואינה מחליפה אותן.
+- `maxSelections` מגביל את מספר הפירות, ו־`additionalSelectionPrice` מחייב כל פרי מעבר לראשון.
+- הזמנה ששלחה נשמרת עם snapshot, כדי לשמר את המחיר והמצב שנקבעו בזמן השליחה.
+- פרי ללא רשומת עונתיות פעילה אינו ניתן להזמנה.
+
+## מפרט פיצ'ר ההתאמות
+
+### צד מנהל
+ביצירה ובעדכון של מוצר יופיע עורך אפשרויות שבו ניתן ליצור קבוצות כמו "פירות", "גודל מגש"
+ו"תוספות". בכל קבוצה המנהל יגדיר סוג בחירה, חובה/רשות, ערכים, תוספת מחיר, זמינות וסדר.
+
+### צד לקוח
+בדף המוצר יוצגו קבוצות ההתאמה הפעילות. בחירה יחידה תוצג כ־dropdown או radio buttons,
+ובחירה מרובה כ־checkboxes. יוצגו תוספת המחיר והמחיר הסופי בזמן אמת, עם הודעת validation
+כאשר חסרה בחירה חובה.
+
+### שרת ואבטחה
+השרת יאמת את מבנה האפשרויות, יגביל תוספות למחירים לא שליליים, יוודא שכל ערך נבחר שייך
+למוצר, ויחשב את מחיר הסל/ההזמנה בעצמו. נתוני מחיר או תפקיד שמגיעים מהלקוח אינם מקור אמת.
+
+### מקרי קצה
+- מוצר ללא אפשרויות ממשיך לעבוד בדיוק כמו מוצר רגיל.
+- בחירה בערך שהושבת נדחית בהוספה חדשה לסל.
+- שינוי מחיר או שם לאחר הוספה לסל אינו משנה את snapshot הסל הקיים.
+- ניסיון לשלוח ערך ממוצר אחר, ערך כפול בקבוצה יחידה או מחיר מזויף נדחה.
+- אי אפשר להוסיף מוצר ללא בחירות חובה.
 
 ---
 

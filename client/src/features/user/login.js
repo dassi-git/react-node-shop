@@ -29,7 +29,7 @@ const Login = () => {
             
             const pendingProductId = sessionStorage.getItem('pendingProductId');
             if (pendingProductId) {
-                updateProduct(pendingProductId)
+                updateProduct({ id: pendingProductId })
                     .unwrap()
                     .then((response) => {
                         sessionStorage.removeItem('pendingProductId');
@@ -78,7 +78,9 @@ const Login = () => {
         if (isError && error) {
             let errorMessage = 'שם משתמש או סיסמה שגויים';
             
-            if (error.data?.message) {
+            if (error.status === 429) {
+                errorMessage = 'בוצעו יותר מדי ניסיונות התחברות. נסה שוב בעוד 15 דקות';
+            } else if (error.data?.message) {
                 errorMessage = error.data.message;
             } else if (error.error) {
                 errorMessage = error.error;
@@ -89,6 +91,9 @@ const Login = () => {
                         break;
                     case 401:
                         errorMessage = 'שם משתמש או סיסמה שגויים';
+                        break;
+                    case 429:
+                        errorMessage = 'בוצעו יותר מדי ניסיונות התחברות. נסה שוב בעוד 15 דקות';
                         break;
                     case 500:
                         errorMessage = 'שגיאת שרת, נסה שוב מאוחר יותר';

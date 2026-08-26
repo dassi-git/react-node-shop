@@ -17,9 +17,10 @@ const basketSlice=apiSlice.injectEndpoints({
             invalidatesTags:["basket"]
         }),
         updeteProduct:(build).mutation({
-            query:(id)=>({
+                        query:({ id, selectedOptions = {}, seasonalDate = null })=>({
                 url:`/basket/${id}`,
-                method:"PUT"
+                                method:"PUT",
+                                body: { selectedOptions, seasonalDate }
         }),
             invalidatesTags:["basket"]
         }),

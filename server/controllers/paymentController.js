@@ -1,8 +1,10 @@
 const Payment = require('../models/Payment')
 const Order = require('../models/Order')
 const Stripe = require('stripe')
+const mongoose = require('mongoose')
 
 const getAuthorizedOrder = async (orderId, user) => {
+    if (!mongoose.isValidObjectId(orderId)) return { error: { status: 400, message: 'Invalid order ID' } }
     const order = await Order.findById(orderId).populate('quote')
     if (!order) return { error: { status: 404, message: 'Order not found' } }
     if (order.userId.toString() !== user._id.toString() && user.role !== 'Admin') {
@@ -61,6 +63,9 @@ const createPayment = async (req, res) => {
 const confirmPayment = async (req, res) => {
     try {
         const { id } = req.params
+        if (!mongoose.isValidObjectId(id)) {
+            return res.status(400).json({ message: 'Invalid payment ID' })
+        }
         const payment = await Payment.findById(id)
 
         if (!payment) {
@@ -114,6 +119,9 @@ const createStripeCheckout = async (req, res) => {
 const completeStripeCheckout = async (req, res) => {
     if (!process.env.STRIPE_SECRET_KEY) return res.status(503).json({ message: 'Stripe is not configured.' })
     try {
+        if (!req.params.sessionId || req.params.sessionId.length > 255) {
+            return res.status(400).json({ message: 'Invalid Stripe session ID' })
+        }
         const stripe = Stripe(process.env.STRIPE_SECRET_KEY)
         const session = await stripe.checkout.sessions.retrieve(req.params.sessionId)
         if (session.payment_status !== 'paid' || !session.metadata?.orderId) return res.status(400).json({ message: 'Stripe payment is not complete.' })
@@ -170,10 +178,14 @@ const createPaypalOrder = async (req, res) => {
 const capturePaypalOrder = async (req, res) => {
     if (!process.env.PAYPAL_CLIENT_ID || !process.env.PAYPAL_CLIENT_SECRET) return res.status(503).json({ message: 'PayPal is not configured.' })
     try {
+        const paymentRecord = await Payment.findOne({ provider: 'paypal', providerPaymentId: req.params.orderId })
+        if (!paymentRecord || (req.user.role !== 'Admin' && paymentRecord.userId.toString() !== req.user._id.toString())) {
+            return res.status(403).json({ message: 'Forbidden' })
+        }
+
         const paypalOrder = await paypalRequest(`/v2/checkout/orders/${req.params.orderId}/capture`, { method: 'POST', body: '{}' })
         if (paypalOrder.status !== 'COMPLETED') return res.status(400).json({ message: 'PayPal payment is not complete.' })
-        const paymentRecord = await Payment.findOne({ provider: 'paypal', providerPaymentId: paypalOrder.id })
-        if (!paymentRecord || (req.user.role !== 'Admin' && paymentRecord.userId.toString() !== req.user._id.toString())) return res.status(403).json({ message: 'Forbidden' })
+        if (paypalOrder.id !== paymentRecord.providerPaymentId) return res.status(400).json({ message: 'PayPal order ID mismatch.' })
         const capturedAmount = Number(paypalOrder.purchase_units?.[0]?.payments?.captures?.[0]?.amount?.value || 0)
         if (Math.abs(capturedAmount - paymentRecord.amount) > 0.01) return res.status(400).json({ message: 'PayPal payment amount does not match the order.' })
         const payment = await finishPayment({ orderId: paymentRecord.orderId, userId: paymentRecord.userId, amount: paymentRecord.amount, provider: 'paypal', providerPaymentId: paypalOrder.id })

@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken')
 const bcrypt = require('bcrypt')
 const crypto = require('crypto')
+const mongoose = require('mongoose')
 const User = require("../models/User")
 const PasswordReset = require("../models/PasswordReset")
 const { sendPasswordResetEmail } = require("../config/emailService")
@@ -93,6 +94,9 @@ const getAllUser = async (req, res) => {
 const getUserById = async (req, res) => {
     try {
         const { id } = req.params
+        if (!mongoose.isValidObjectId(id)) {
+            return res.status(400).json({ message: 'Invalid user ID' })
+        }
         const user = await User.findById(id).select('-password').lean()
         if (!user) {
             return res.status(404).json({ message: 'User not found' })
@@ -107,6 +111,9 @@ const getUserById = async (req, res) => {
 const deleteUser = async (req, res) => {
     try {
         const { id } = req.params
+        if (!mongoose.isValidObjectId(id)) {
+            return res.status(400).json({ message: 'Invalid user ID' })
+        }
         const user = await User.findById(id)
         if (!user) {
             return res.status(400).json({ message: 'User not found' })
@@ -123,6 +130,10 @@ const updateUser = async (req, res) => {
     try {
         const { id } = req.params
         const { name, userName, address, phone, email, password, role } = req.body
+
+        if (!mongoose.isValidObjectId(id)) {
+            return res.status(400).json({ message: 'Invalid user ID' })
+        }
 
         const currentUserId = req.user?._id?.toString()
         const isAdmin = req.user?.role === 'Admin'
@@ -154,6 +165,9 @@ const updateUser = async (req, res) => {
         }
         
         if (password && password.trim() !== '') {
+            if (password.length < 6) {
+                return res.status(400).json({ message: 'Password must be at least 6 characters long' })
+            }
             user.password = await bcrypt.hash(password, 10)
         }
         
@@ -161,6 +175,9 @@ const updateUser = async (req, res) => {
         
         return res.json({ message: `User ${user.userName} updated`, user: { ...user._doc, password: undefined } })
     } catch (error) {
+        if (error.code === 11000) {
+            return res.status(409).json({ message: error.keyPattern?.email ? 'Email already exists' : 'Username already exists' })
+        }
         console.error('Error updating user:', error)
         return res.status(500).json({ message: 'Server error updating user' })
     }

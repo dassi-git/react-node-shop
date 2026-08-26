@@ -3,13 +3,13 @@ import { useUpdeteProductMutation } from "./basketSlise";
 import { Button } from 'primereact/button';
 import { Toast } from 'primereact/toast';
 
-const AddProductToBasket = ({ productId, productName, disabled = false }) => {
+const AddProductToBasket = ({ productId, productName, selectedOptions = {}, disabled = false }) => {
     const toast = useRef(null);
     const [updateProduct, { isLoading }] = useUpdeteProductMutation();
 
     const handleAddToBasket = async () => {
         try {
-            await updateProduct(productId).unwrap();
+            await updateProduct({ id: productId, selectedOptions }).unwrap();
             toast.current.show({ 
                 severity: 'success', 
                 summary: 'נוסף בהצלחה', 

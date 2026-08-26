@@ -108,7 +108,14 @@ const MyOrdersPage = () => {
                                 <div style={{ marginTop: 12 }}>
                                     {order.items?.map((item, index) => (
                                         <div key={`${order._id}-${index}`} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: 8 }}>
-                                            <span>{item.productName}</span>
+                                            <span>
+                                                {item.productName}
+                                                {item.seasonalSnapshot?.length > 0 && (
+                                                    <small style={{ display: 'block', color: '#64748b' }}>
+                                                        {item.seasonalSnapshot.map((season) => `${season.displayName}${season.status === 'premium' ? ` (+${season.priceAdjustment} ₪)` : ''}`).join(', ')}
+                                                    </small>
+                                                )}
+                                            </span>
                                             <span>{item.totalPrice || 0} ₪</span>
                                         </div>
                                     ))}

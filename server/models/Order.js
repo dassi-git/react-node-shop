@@ -20,6 +20,10 @@ const orderItemSchema = new mongoose.Schema({
         type: Object,
         default: {}
     },
+    seasonalSnapshot: {
+        type: mongoose.Schema.Types.Mixed,
+        default: []
+    },
     customNotes: {
         type: String,
         default: ''

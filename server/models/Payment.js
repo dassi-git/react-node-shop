@@ -45,4 +45,10 @@ const paymentSchema = new mongoose.Schema({
     }
 }, { timestamps: true })
 
+paymentSchema.index(
+    { provider: 1, providerPaymentId: 1 },
+    { unique: true, partialFilterExpression: { providerPaymentId: { $type: 'string', $ne: '' } } }
+)
+paymentSchema.index({ orderId: 1, createdAt: -1 })
+
 module.exports = mongoose.model('Payment', paymentSchema)
