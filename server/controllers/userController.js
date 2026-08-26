@@ -206,8 +206,6 @@ const logout = async (req, res) => {
 const forgotPassword = async (req, res) => {
     const { email } = req.body
     
-    console.log('Password reset requested for:', email)
-    
     if (!email) {
         return res.status(400).json({ message: 'Email is required' })
     }
@@ -216,11 +214,8 @@ const forgotPassword = async (req, res) => {
         const user = await User.findOne({ email })
         
         if (!user) {
-            console.log('Email not found:', email)
             return res.json({ message: 'If the email exists, a reset link has been sent' })
         }
-        
-        console.log('User found:', user.name)
         
         await PasswordReset.deleteMany({ userId: user._id })
         console.log('Old tokens deleted')
@@ -240,7 +235,7 @@ const forgotPassword = async (req, res) => {
         
         if (!emailResult.success) {
             console.error('❌ שליחת המייל נכשלה:', emailResult.error)
-            return res.status(500).json({ message: 'Failed to send reset email. Please try again later.' })
+            return res.json({ message: 'If the email exists, a reset link has been sent' })
         }
         
         console.log('✅ המייל נשלח בהצלחה!')
@@ -266,6 +261,10 @@ const resetPassword = async (req, res) => {
         const resetRecord = await PasswordReset.findOne({ token })
         
         if (!resetRecord) {
+            return res.status(400).json({ message: 'Invalid or expired reset token' })
+        }
+        if (Date.now() - resetRecord.createdAt.getTime() > 60 * 60 * 1000) {
+            await PasswordReset.deleteOne({ _id: resetRecord._id })
             return res.status(400).json({ message: 'Invalid or expired reset token' })
         }
         

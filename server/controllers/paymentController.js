@@ -11,7 +11,7 @@ const getAuthorizedOrder = async (orderId, user) => {
     if (!['quote_accepted', 'payment_pending'].includes(order.status)) {
         return { error: { status: 400, message: 'A quote must be accepted before payment.' } }
     }
-    if (!order.quote) return { error: { status: 400, message: 'No accepted quote exists for this order.' } }
+    if (!order.quote || order.quote.status !== 'accepted') return { error: { status: 400, message: 'No accepted quote exists for this order.' } }
     const amount = Number(order.quote.depositAmount || order.finalPrice || order.totalPrice || 0)
     if (amount <= 0) return { error: { status: 400, message: 'The order has no payable amount.' } }
     return { order, amount }

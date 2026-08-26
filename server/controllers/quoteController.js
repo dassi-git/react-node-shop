@@ -13,6 +13,9 @@ const createQuote = async (req, res) => {
         if (!order) {
             return res.status(404).json({ message: 'Order not found' })
         }
+        if (!['quote_requested', 'quote_rejected'].includes(order.status)) {
+            return res.status(400).json({ message: 'A quote cannot be created for this order status.' })
+        }
         if (!Number.isFinite(Number(quotePrice)) || Number(quotePrice) < 0 || Number(quotePrice) > 100000) {
             return res.status(400).json({ message: 'Quote price must be a valid non-negative amount.' })
         }
@@ -30,7 +33,7 @@ const createQuote = async (req, res) => {
             deliveryFee: Number(deliveryFee || 0),
             depositAmount: Number(depositAmount || 0),
             notes: notes || '',
-            validUntil: validUntil || null,
+            validUntil: validUntil && new Date(validUntil) > new Date() ? validUntil : new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
             status: 'sent'
         })
 
