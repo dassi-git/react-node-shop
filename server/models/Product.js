@@ -9,6 +9,7 @@ const productScema = new mongoose.Schema(
         price: {
             type: Number,
             required: true,
+            min: 0,
         },
         body: {
             type: String,
@@ -23,6 +24,11 @@ const productScema = new mongoose.Schema(
             min: 0,
             max: 5,
             default: 4.5
+        },
+        quantity: {
+            type: Number,
+            min: 0,
+            default: 0
         },
         productExist: {
             type: String,

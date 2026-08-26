@@ -1,5 +1,7 @@
 const Order = require('../models/Order')
 const Quote = require('../models/Quote')
+const Product = require('../models/Product')
+const mongoose = require('mongoose')
 
 const generateOrderNumber = () => {
     const date = new Date()
@@ -15,9 +17,14 @@ const createOrder = async (req, res) => {
             return res.status(400).json({ message: 'At least one item is required.' })
         }
 
-        const normalizedItems = items.map((item) => {
+        const normalizedItems = await Promise.all(items.map(async (item) => {
             const quantity = Number(item.quantity || 1)
-            const unitPrice = Number(item.unitPrice || 0)
+            const isProductId = mongoose.isValidObjectId(item.productId)
+            const product = isProductId ? await Product.findById(item.productId).lean() : null
+            if (isProductId && !product) throw new Error('Product no longer exists.')
+            if (product && product.inventoryStatus === 'OUTOFSTOCK') throw new Error(`${product.name} is out of stock.`)
+            if (product && quantity > product.quantity) throw new Error(`${product.name} does not have enough stock.`)
+            const unitPrice = product ? Number(product.price) : Number(item.unitPrice || 0)
             if (!Number.isInteger(quantity) || quantity < 1 || quantity > 100) {
                 throw new Error('Quantity must be a whole number between 1 and 100.')
             }
@@ -28,14 +35,14 @@ const createOrder = async (req, res) => {
 
             return {
                 productId: item.productId,
-                productName: item.productName || 'Custom fruit arrangement',
+                productName: product?.name || item.productName || 'Custom fruit arrangement',
                 quantity,
                 selectedOptions: item.selectedOptions || {},
                 customNotes: item.customNotes || '',
                 unitPrice,
                 totalPrice
             }
-        })
+        }))
 
         const subtotal = normalizedItems.reduce((sum, item) => sum + Number(item.totalPrice || 0), 0)
         const fee = Number(deliveryFee || 0)
@@ -61,7 +68,7 @@ const createOrder = async (req, res) => {
         return res.status(201).json({ message: 'Order created successfully', order })
     } catch (error) {
         console.error('Error creating order:', error)
-        if (error.message.includes('Quantity must') || error.message.includes('Unit price must')) {
+        if (error.message.includes('Quantity must') || error.message.includes('Unit price must') || error.message.includes('Product no longer') || error.message.includes('out of stock') || error.message.includes('does not have enough stock')) {
             return res.status(400).json({ message: error.message })
         }
         return res.status(500).json({ message: 'Server error creating order' })

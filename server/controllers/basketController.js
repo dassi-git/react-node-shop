@@ -88,7 +88,7 @@ const updateBasket = async (req, res) => {
             return res.status(404).json({ message: "המוצר לא נמצא במערכת" })
         }
         
-        if (myProduct.productExist === "OUTOFSTOCK" || myProduct.productExist === "0") {
+        if (myProduct.productExist === "OUTOFSTOCK" || myProduct.productExist === "0" || myProduct.quantity <= 0) {
             return res.status(400).json({ 
                 message: "מצטערים, המוצר אזל מהמלאי",
                 productName: myProduct.name,
@@ -110,6 +110,9 @@ const updateBasket = async (req, res) => {
         })
         
         if (existingProduct) {
+            if (existingProduct.quantity >= myProduct.quantity && myProduct.quantity > 0) {
+                return res.status(400).json({ message: "לא ניתן להוסיף מעבר לכמות הקיימת במלאי", productName: myProduct.name, outOfStock: true })
+            }
             existingProduct.quantity++
         } else {
             myBasket.Products.push({ type: myProduct._id, quantity: 1 })
@@ -132,7 +135,11 @@ const updateBasket = async (req, res) => {
 const creatProduct = async (req, res) => {
     try {
         const userId = req.user._id
-        const myBasket = await Basket.create({ userId })
+        const myBasket = await Basket.findOneAndUpdate(
+            { userId },
+            { $setOnInsert: { userId, Products: [] } },
+            { new: true, upsert: true, setDefaultsOnInsert: true }
+        )
         return res.json(myBasket)
     } catch (error) {
         console.error('Error creating basket:', error)

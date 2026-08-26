@@ -41,15 +41,19 @@ const deleteProduct = async (req, res) => {
 
 const updateProduct = async (req, res) => {
     try {
-        const { _id, name, price, body, category, rating, productExit, productExist, inventoryStatus, image } = req.body
+        const { _id, name, price, body, category, rating, quantity, productExit, productExist, inventoryStatus, image } = req.body
         const updateProduct1 = await Product.findById(_id)
 
         if (!updateProduct1) {
             return res.status(404).json({ message: "Product not found" })
         }
+        if (quantity !== undefined && (!Number.isInteger(Number(quantity)) || Number(quantity) < 0)) {
+            return res.status(400).json({ message: "Quantity must be a non-negative whole number" })
+        }
 
         updateProduct1.name = name || updateProduct1.name
         updateProduct1.price = price ?? updateProduct1.price
+        updateProduct1.quantity = quantity ?? updateProduct1.quantity
         updateProduct1.body = body ?? updateProduct1.body
         updateProduct1.category = category || updateProduct1.category || "General"
         updateProduct1.rating = rating ?? updateProduct1.rating ?? 4.5
@@ -72,10 +76,13 @@ const updateProduct = async (req, res) => {
 
 const creatProduct = async (req, res) => {
     try {
-        const { name, price, body, category, rating, productExit, productExist, inventoryStatus } = req.body
+        const { name, price, body, category, rating, quantity, productExit, productExist, inventoryStatus } = req.body
 
-        if (!name || !price) {
+        if (!name || price === undefined || price === null || Number(price) < 0) {
             return res.status(400).json({ message: "Name and price are required" })
+        }
+        if (quantity !== undefined && (!Number.isInteger(Number(quantity)) || Number(quantity) < 0)) {
+            return res.status(400).json({ message: "Quantity must be a non-negative whole number" })
         }
 
         let imageUrl = ''
@@ -90,6 +97,7 @@ const creatProduct = async (req, res) => {
         const product1 = await Product.create({
             name,
             price,
+            quantity: Number(quantity) || 0,
             body,
             category: category || 'General',
             rating: Number(rating) || 4.5,
