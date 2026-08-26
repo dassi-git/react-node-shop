@@ -50,7 +50,7 @@ const ProductDetail = () => {
     );
   }
 
-  const imageUrl = `${process.env.REACT_APP_API_URL || 'http://localhost:8888'}${product.image || ''}`;
+  const imageUrl = product.image ? `${process.env.REACT_APP_API_URL || 'http://localhost:8888'}${product.image.startsWith('/') ? '' : '/'}${product.image}` : '/logo.png';
   const finalBundlePrice = selectedBundleData
     ? Number(product.price || 0) * (1 - Number(selectedBundleData.discountPercent || 0) / 100)
     : null;

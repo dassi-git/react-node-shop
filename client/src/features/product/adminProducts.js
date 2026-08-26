@@ -190,7 +190,7 @@ const [updateProduct]=useUppdateProductMutation()
     };
 
     const imageBodyTemplate = (rowData) => {
-        return <img src={`${process.env.REACT_APP_API_URL || 'http://localhost:8888'}/${rowData.image}`} alt={rowData.name} className="admin-product-image" />;
+        return <img src={rowData.image ? `${process.env.REACT_APP_API_URL || 'http://localhost:8888'}${rowData.image.startsWith('/') ? '' : '/'}${rowData.image}` : '/logo.png'} alt={rowData.name} className="admin-product-image" />;
     };
 
     const priceBodyTemplate = (rowData) => {
@@ -361,7 +361,7 @@ const [updateProduct]=useUppdateProductMutation()
             </div>
 
             <Dialog visible={productDialog} style={{ width: '32rem' }} breakpoints={{ '960px': '75vw', '641px': '90vw' }} header="Product Details" modal className="p-fluid" footer={productDialogFooter} onHide={hideDialog}>
-                {product.image && <img src={`${process.env.REACT_APP_API_URL || 'http://localhost:8888'}/${product.image}`} alt={product.image} className="product-image block m-auto pb-3" style={{width:'500px'}}/>}
+                {product.image && <img src={`${process.env.REACT_APP_API_URL || 'http://localhost:8888'}${product.image.startsWith('/') ? '' : '/'}${product.image}`} alt={product.image} className="product-image block m-auto pb-3" style={{width:'500px'}}/>}
                 <div className="field">
                     <label htmlFor="name" className="font-bold">
                         Name

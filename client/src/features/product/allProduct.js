@@ -146,7 +146,7 @@ const AllProduct = () => {
 
                 <div className="col-12">
                     <div className={classNames('product-list-item flex flex-column xl:flex-row xl:align-items-start p-4 gap-4 border-round-lg', { 'border-top-1 surface-border': index !== 0 })}>
-                        <img className="w-9 sm:w-16rem xl:w-10rem shadow-2 block xl:block mx-auto border-round" src={`${process.env.REACT_APP_API_URL || 'http://localhost:8888'}/${product.image}`} alt={product.name} />
+                        <img className="w-9 sm:w-16rem xl:w-10rem shadow-2 block xl:block mx-auto border-round" src={product.image ? `${process.env.REACT_APP_API_URL || 'http://localhost:8888'}${product.image.startsWith('/') ? '' : '/'}${product.image}` : '/logo.png'} alt={product.name} />
 
                         <div className="flex flex-column sm:flex-row justify-content-between align-items-center xl:align-items-start flex-1 gap-4">
                             <div className="flex flex-column align-items-center sm:align-items-start gap-3">
@@ -231,7 +231,7 @@ const AllProduct = () => {
                     </div>
 
                     <div className="product-card-image-wrap">
-                        <img className="product-card-image" src={`${process.env.REACT_APP_API_URL || 'http://localhost:8888'}/${product.image}`} alt={product.name} />
+                        <img className="product-card-image" src={product.image ? `${process.env.REACT_APP_API_URL || 'http://localhost:8888'}${product.image.startsWith('/') ? '' : '/'}${product.image}` : '/logo.png'} alt={product.name} />
                     </div>
 
                     <div className="product-card-body">
