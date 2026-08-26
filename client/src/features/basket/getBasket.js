@@ -36,7 +36,7 @@ export default function GetBasket() {
         }
     }, [isSuccess, basket]);
     const formatCurrency = (value) => {
-        return value.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+        return value.toLocaleString('he-IL', { style: 'currency', currency: 'ILS' });
     };
 
     const hideDeleteProductDialog = () => {
@@ -104,7 +104,7 @@ export default function GetBasket() {
                     {/* Product Image */}
                     <div className="basket-item-image">
                         <img 
-                            src={`${process.env.REACT_APP_API_URL || 'http://localhost:8888'}/${product.image}`} 
+                            src={product.image ? `${process.env.REACT_APP_API_URL || 'http://localhost:8888'}${product.image.startsWith('/') ? '' : '/'}${product.image}` : '/logo.png'}
                             alt={product.name}
                         />
                     </div>
