@@ -1,12 +1,13 @@
 const nodemailer = require('nodemailer');
 
+const escapeHtml = (value) => String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+
 const createTransporter = () => {
-    console.log('Creating transporter with:', {
-        service: 'gmail',
-        user: process.env.EMAIL_USER,
-        hasPassword: !!process.env.EMAIL_PASSWORD
-    });
-    
     return nodemailer.createTransport({
         service: 'gmail',
         auth: {
@@ -18,8 +19,9 @@ const createTransporter = () => {
 
 const sendPasswordResetEmail = async (email, resetToken, userName) => {
     const transporter = createTransporter();
-    
-    const resetUrl = `${process.env.CLIENT_URL || 'http://localhost:3000'}/reset-password/${resetToken}`;
+    const resetUrl = `${process.env.CLIENT_URL || 'http://localhost:3000'}/reset-password/${encodeURIComponent(resetToken)}`;
+    const safeUserName = escapeHtml(userName);
+    const safeResetUrl = escapeHtml(resetUrl);
     
     const mailOptions = {
         from: process.env.EMAIL_USER || 'your-email@gmail.com',
@@ -32,7 +34,7 @@ const sendPasswordResetEmail = async (email, resetToken, userName) => {
                 </div>
                 
                 <div style="background-color: white; padding: 30px; border-radius: 0 0 10px 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-                    <h2 style="color: #333; margin-bottom: 20px;">שלום ${userName},</h2>
+                    <h2 style="color: #333; margin-bottom: 20px;">שלום ${safeUserName},</h2>
                     
                     <p style="color: #666; font-size: 16px; line-height: 1.6;">
                         קיבלנו בקשה לאיפוס הסיסמה של החשבון שלך. 
@@ -43,7 +45,7 @@ const sendPasswordResetEmail = async (email, resetToken, userName) => {
                     </p>
                     
                     <div style="text-align: center; margin: 30px 0;">
-                        <a href="${resetUrl}" 
+                        <a href="${safeResetUrl}"
                            style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
                                   color: white; 
                                   padding: 15px 40px; 
@@ -60,7 +62,7 @@ const sendPasswordResetEmail = async (email, resetToken, userName) => {
                         או העתק והדבק את הקישור הזה בדפדפן:
                     </p>
                     <p style="color: #667eea; font-size: 14px; word-break: break-all;">
-                        ${resetUrl}
+                        ${safeResetUrl}
                     </p>
                     
                     <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
@@ -79,16 +81,10 @@ const sendPasswordResetEmail = async (email, resetToken, userName) => {
     };
     
     try {
-        console.log('📮 שולח מייל...');
-        const info = await transporter.sendMail(mailOptions);
-        console.log('✅ המייל נשלח בהצלחה!', {
-            messageId: info.messageId,
-            accepted: info.accepted,
-            rejected: info.rejected
-        });
+        await transporter.sendMail(mailOptions);
         return { success: true };
     } catch (error) {
-        console.error('❌ שגיאה בשליחת מייל:', {
+        console.error('Password reset email failed:', {
             message: error.message,
             code: error.code,
             response: error.response,

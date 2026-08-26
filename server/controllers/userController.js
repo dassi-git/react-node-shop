@@ -6,15 +6,21 @@ const User = require("../models/User")
 const PasswordReset = require("../models/PasswordReset")
 const { sendPasswordResetEmail } = require("../config/emailService")
 
+const hashResetToken = (token) => crypto.createHash('sha256').update(token).digest('hex')
+const normalizeEmail = (email) => String(email || '').trim().toLowerCase()
+const normalizeUserName = (userName) => String(userName || '').trim()
+
 
 const register = async (req, res) => {
     const { name, userName, address, phone, email, password } = req.body
+    const normalizedEmail = normalizeEmail(email)
+    const normalizedUserName = normalizeUserName(userName)
     
     if (!name || !userName || !address || !phone || !email || !password)
         return res.status(400).json({ message: 'All fields are required' })
     
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email)) {
+    if (!emailRegex.test(normalizedEmail)) {
         return res.status(400).json({ message: 'Invalid email format' })
     }
     
@@ -22,17 +28,17 @@ const register = async (req, res) => {
         return res.status(400).json({ message: 'Password must be at least 6 characters long' })
     }
     
-    const userExist = await User.findOne({ userName: userName }).lean()
+    const userExist = await User.findOne({ userName: normalizedUserName }).lean()
     if (userExist)
         return res.status(409).json({ message: "Duplicate username" })
     
-    const emailExist = await User.findOne({ email: email }).lean()
+    const emailExist = await User.findOne({ email: normalizedEmail }).lean()
     if (emailExist)
         return res.status(409).json({ message: "Email already exists" })
     
     try {
         const bcryptPassword = await bcrypt.hash(password, 10)
-        const userObj = { name, userName, address, phone, email, password: bcryptPassword}
+        const userObj = { name: String(name).trim(), userName: normalizedUserName, address: String(address).trim(), phone: String(phone).trim(), email: normalizedEmail, password: bcryptPassword}
         const user = await User.create(userObj)
         if (user) {
             return res.status(201).json({ message: `New user ${user.userName} created` })
@@ -57,9 +63,10 @@ const register = async (req, res) => {
 const login = async (req, res) => {
     try {
         const { userName, password } = req.body
+        const normalizedUserName = normalizeUserName(userName)
         if (!userName || !password)
             return res.status(400).json({ message: 'All fields are required' })
-        const foundUser = await User.findOne({ userName }).lean()
+        const foundUser = await User.findOne({ userName: normalizedUserName }).lean()
         if (!foundUser) {
             return res.status(401).json({ message: 'Unauthorized' })
 
@@ -97,6 +104,9 @@ const getUserById = async (req, res) => {
         if (!mongoose.isValidObjectId(id)) {
             return res.status(400).json({ message: 'Invalid user ID' })
         }
+        if (req.user?.role !== 'Admin' && req.user?._id?.toString() !== id.toString()) {
+            return res.status(403).json({ message: 'You can only view your own profile' })
+        }
         const user = await User.findById(id).select('-password').lean()
         if (!user) {
             return res.status(404).json({ message: 'User not found' })
@@ -130,6 +140,8 @@ const updateUser = async (req, res) => {
     try {
         const { id } = req.params
         const { name, userName, address, phone, email, password, role } = req.body
+        const normalizedEmail = normalizeEmail(email)
+        const normalizedUserName = normalizeUserName(userName)
 
         if (!mongoose.isValidObjectId(id)) {
             return res.status(400).json({ message: 'Invalid user ID' })
@@ -143,8 +155,11 @@ const updateUser = async (req, res) => {
             return res.status(403).json({ message: 'You can only update your own profile' })
         }
 
-        if (!name || !userName || !address || !phone || !email) {
+        if (!name || !normalizedUserName || !address || !phone || !normalizedEmail) {
             return res.status(400).json({ message: 'All required fields must be provided' })
+        }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+            return res.status(400).json({ message: 'Invalid email format' })
         }
         
         const user = await User.findById(id)
@@ -153,10 +168,10 @@ const updateUser = async (req, res) => {
         }
         
         user.name = name
-        user.userName = userName
-        user.address = address
-        user.phone = phone
-        user.email = email
+        user.userName = normalizedUserName
+        user.address = String(address).trim()
+        user.phone = String(phone).trim()
+        user.email = normalizedEmail
         
         if (role !== undefined && (role === 'Admin' || role === 'User')) {
             if (isAdmin) {
@@ -205,33 +220,23 @@ const getCurrentUserProfile = async (req, res) => {
 }
 
 const logout = async (req, res) => {
-    const cookies = req.cookies
-    
-    if (!cookies?.jwt) {
-        return res.status(204).json({ message: 'No token to clear' })
-    }
-    
-    res.clearCookie('jwt', { 
-        httpOnly: true, 
-        sameSite: 'None', 
-        secure: true 
-    })
-    
-    return res.json({ message: 'Logout successful' })
+    return res.status(204).end()
 }
 
 const forgotPassword = async (req, res) => {
     const { email } = req.body
+    const normalizedEmail = normalizeEmail(email)
+    const genericResponse = { message: 'If the email exists, a reset link has been sent' }
     
     if (!email) {
         return res.status(400).json({ message: 'Email is required' })
     }
     
     try {
-        const user = await User.findOne({ email })
+        const user = await User.findOne({ email: normalizedEmail })
         
         if (!user) {
-            return res.json({ message: 'If the email exists, a reset link has been sent' })
+            return res.json(genericResponse)
         }
         
         await PasswordReset.deleteMany({ userId: user._id })
@@ -241,17 +246,17 @@ const forgotPassword = async (req, res) => {
         await PasswordReset.create({
             userId: user._id,
             email: user.email,
-            token: resetToken
+            token: hashResetToken(resetToken)
         })
         
         const emailResult = await sendPasswordResetEmail(email, resetToken, user.name)
         
         if (!emailResult.success) {
             console.error('❌ שליחת המייל נכשלה:', emailResult.error)
-            return res.json({ message: 'If the email exists, a reset link has been sent' })
+            return res.json(genericResponse)
         }
         
-        return res.json({ message: 'Password reset link has been sent to your email' })
+        return res.json(genericResponse)
     } catch (error) {
         console.error('❌ שגיאה באיפוס סיסמה:', error)
         return res.status(500).json({ message: 'Server error. Please try again later.' })
@@ -270,7 +275,7 @@ const resetPassword = async (req, res) => {
     }
     
     try {
-        const resetRecord = await PasswordReset.findOne({ token })
+        const resetRecord = await PasswordReset.findOne({ token: hashResetToken(token) })
         
         if (!resetRecord) {
             return res.status(400).json({ message: 'Invalid or expired reset token' })

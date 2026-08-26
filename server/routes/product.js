@@ -12,13 +12,19 @@ const fs = require('fs')
 const uploadsDir = path.join(__dirname, '..', 'public', 'uploads')
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true })
 
+const imageExtensions = {
+	'image/jpeg': '.jpg',
+	'image/png': '.png',
+	'image/webp': '.webp'
+}
+
 const storage = multer.diskStorage({
 	destination: function (req, file, cb) {
 		cb(null, uploadsDir)
 	},
 	filename: function (req, file, cb) {
 		const unique = Date.now() + '-' + Math.round(Math.random() * 1E9)
-		cb(null, unique + path.extname(file.originalname))
+		cb(null, unique + imageExtensions[file.mimetype])
 	}
 })
 const upload = multer({

@@ -1,5 +1,5 @@
 const mongoose = require('mongoose')
-const { MongoMemoryServer } = require('mongodb-memory-server')
+const { MongoMemoryReplSet } = require('mongodb-memory-server')
 
 const seedDevelopmentProducts = async () => {
   if (process.env.NODE_ENV !== 'development') return
@@ -47,11 +47,16 @@ const seedDevelopmentProducts = async () => {
 }
 
 const connectDB = async () => {
+  const configuredUri = process.env.DATABASE_URI || process.env.MONGO_URI
+  if (process.env.NODE_ENV === 'production' && !configuredUri) {
+    throw new Error('DATABASE_URI or MONGO_URI must be configured in production')
+  }
+
   try {
-    const mongoUri = process.env.DATABASE_URI || 'mongodb://localhost:27017/329166185'
-    await mongoose.connect(mongoUri, {
-      serverSelectionTimeoutMS: 5000,
-      connectTimeoutMS: 5000
+    if (!configuredUri) throw new Error('No MongoDB URI configured')
+    await mongoose.connect(configuredUri, {
+        serverSelectionTimeoutMS: 5000,
+        connectTimeoutMS: 5000
     })
     await seedDevelopmentProducts()
     return mongoose.connection
@@ -60,7 +65,7 @@ const connectDB = async () => {
 
     console.warn('Local MongoDB not available, starting in-memory MongoDB...')
     try {
-      const mongoServer = await MongoMemoryServer.create()
+      const mongoServer = await MongoMemoryReplSet.create({ replSet: { count: 1 } })
       const uri = mongoServer.getUri()
       await mongoose.connect(uri, {
         serverSelectionTimeoutMS: 5000,

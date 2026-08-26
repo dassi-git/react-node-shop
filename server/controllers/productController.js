@@ -1,4 +1,26 @@
 const Product = require("../models/Product")
+const mongoose = require('mongoose')
+const PRODUCT_STATUSES = new Set(['INSTOCK', 'LOWSTOCK', 'OUTOFSTOCK'])
+
+const validateProductFields = ({ price, rating, quantity, inventoryStatus }) => {
+    if (price !== undefined && (!Number.isFinite(Number(price)) || Number(price) < 0)) {
+        return 'Price must be a valid non-negative number'
+    }
+    if (rating !== undefined && (!Number.isFinite(Number(rating)) || Number(rating) < 0 || Number(rating) > 5)) {
+        return 'Rating must be a number between 0 and 5'
+    }
+    if (quantity !== undefined && (!Number.isInteger(Number(quantity)) || Number(quantity) < 0)) {
+        return 'Quantity must be a non-negative whole number'
+    }
+    if (inventoryStatus !== undefined && !PRODUCT_STATUSES.has(inventoryStatus)) {
+        return 'Invalid inventory status'
+    }
+    return null
+}
+
+const isProductValidationError = (error) => error instanceof mongoose.Error.ValidationError
+    || error instanceof mongoose.Error.CastError
+    || /customization|image|fruit configuration|fruit selection|additional fruit|allowed fruits|inventory status/i.test(error.message || '')
 
 const getUploadedImages = (req) => [
     ...(req.files?.imageFiles || []),
@@ -64,6 +86,9 @@ const normalizeFruitConfiguration = (configuration) => {
 
 const getAllProducts = async (req, res) => {
     try {
+        if (mongoose.connection.readyState !== 1) {
+            return res.status(503).json({ message: 'Product catalog is temporarily unavailable' })
+        }
         const products = await Product.find().lean()
         return res.json(products)
     } catch (error) {
@@ -75,6 +100,12 @@ const getAllProducts = async (req, res) => {
 const getId = async (req, res) => {
     try {
         const { id } = req.params
+        if (!mongoose.isValidObjectId(id)) {
+            return res.status(400).json({ message: 'Invalid product ID' })
+        }
+        if (mongoose.connection.readyState !== 1) {
+            return res.status(503).json({ message: 'Product catalog is temporarily unavailable' })
+        }
         const products = await Product.findOne({ _id: id })
         if (!products) {
             return res.status(404).json({ message: 'Product not found' })
@@ -89,6 +120,12 @@ const getId = async (req, res) => {
 const deleteProduct = async (req, res) => {
     try {
         const { id } = req.params
+        if (!mongoose.isValidObjectId(id)) {
+            return res.status(400).json({ message: 'Invalid product ID' })
+        }
+        if (mongoose.connection.readyState !== 1) {
+            return res.status(503).json({ message: 'Product catalog is temporarily unavailable' })
+        }
         const delate = await Product.findById({ _id: id })
         if (!delate) {
             return res.status(404).json({ message: "Product not found" })
@@ -104,15 +141,16 @@ const deleteProduct = async (req, res) => {
 const updateProduct = async (req, res) => {
     try {
         const { _id, name, price, body, category, rating, quantity, productExit, productExist, inventoryStatus, image } = req.body
+        if (!mongoose.isValidObjectId(_id)) {
+            return res.status(400).json({ message: 'Invalid product ID' })
+        }
+        const validationError = validateProductFields({ price, rating, quantity, inventoryStatus: inventoryStatus || productExist || productExit })
+        if (validationError) return res.status(400).json({ message: validationError })
         const updateProduct1 = await Product.findById(_id)
 
         if (!updateProduct1) {
             return res.status(404).json({ message: "Product not found" })
         }
-        if (quantity !== undefined && (!Number.isInteger(Number(quantity)) || Number(quantity) < 0)) {
-            return res.status(400).json({ message: "Quantity must be a non-negative whole number" })
-        }
-
         updateProduct1.name = name || updateProduct1.name
         updateProduct1.price = price ?? updateProduct1.price
         updateProduct1.quantity = quantity ?? updateProduct1.quantity
@@ -142,7 +180,7 @@ const updateProduct = async (req, res) => {
         return res.json(result)
     } catch (error) {
         console.error('Error updating product:', error)
-        if (error.message.toLowerCase().includes('customization') || error.message.toLowerCase().includes('image')) return res.status(400).json({ message: error.message })
+        if (isProductValidationError(error)) return res.status(400).json({ message: error.message })
         return res.status(500).json({ message: 'Server error updating product' })
     }
 }
@@ -151,12 +189,12 @@ const creatProduct = async (req, res) => {
     try {
         const { name, price, body, category, rating, quantity, productExit, productExist, inventoryStatus } = req.body
 
-        if (!name || price === undefined || price === null || Number(price) < 0) {
+        if (!String(name || '').trim() || price === undefined || price === null || Number(price) < 0) {
             return res.status(400).json({ message: "Name and price are required" })
         }
-        if (quantity !== undefined && (!Number.isInteger(Number(quantity)) || Number(quantity) < 0)) {
-            return res.status(400).json({ message: "Quantity must be a non-negative whole number" })
-        }
+        const normalizedStock = inventoryStatus || productExist || productExit || 'INSTOCK'
+        const validationError = validateProductFields({ price, rating, quantity, inventoryStatus: normalizedStock })
+        if (validationError) return res.status(400).json({ message: validationError })
 
         const uploadedImages = getUploadedImages(req)
         const requestedImages = normalizeImages(req.body.images)
@@ -168,7 +206,6 @@ const creatProduct = async (req, res) => {
         }
         if (images.length > 7) return res.status(400).json({ message: 'A product can have at most 7 images.' })
 
-        const normalizedStock = inventoryStatus || productExist || productExit || 'INSTOCK'
         const customizationOptions = normalizeCustomizationOptions(req.body.customizationOptions)
         const fruitConfiguration = normalizeFruitConfiguration(req.body.fruitConfiguration)
 
@@ -190,7 +227,7 @@ const creatProduct = async (req, res) => {
         return res.json(product1)
     } catch (error) {
         console.error('Error creating product:', error)
-        if (error.message.toLowerCase().includes('customization') || error.message.toLowerCase().includes('image')) return res.status(400).json({ message: error.message })
+        if (isProductValidationError(error)) return res.status(400).json({ message: error.message })
         return res.status(500).json({ message: 'Server error creating product' })
     }
 }

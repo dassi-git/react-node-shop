@@ -35,6 +35,16 @@ const passwordResetLimiter = rateLimit({
     legacyHeaders: false // ללא headers ישנים
 });
 
+const paymentLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    message: {
+        message: 'Too many payment requests from this IP, please try again after 15 minutes'
+    },
+    standardHeaders: true,
+    legacyHeaders: false
+});
+
 // הגדרת מגביל קצב כללי לכל בקשות ה-API
 const apiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // חלון זמן של 15 דקות (במילישניות)
@@ -51,5 +61,6 @@ module.exports = {
     loginLimiter, // מגביל התחברות
     registerLimiter, // מגביל רישום
     passwordResetLimiter, // מגביל איפוס סיסמה
+    paymentLimiter, // מגביל פעולות תשלום
     apiLimiter // מגביל כללי
 };

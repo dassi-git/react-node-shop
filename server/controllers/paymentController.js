@@ -20,13 +20,69 @@ const getAuthorizedOrder = async (orderId, user) => {
 }
 
 const finishPayment = async ({ orderId, userId, amount, provider, providerPaymentId }) => {
-    const payment = await Payment.findOneAndUpdate(
-        { orderId, provider, providerPaymentId },
-        { orderId, userId, amount, paymentMethod: provider === 'paypal' ? 'paypal' : 'stripe', provider, providerPaymentId, status: 'paid' },
-        { new: true, upsert: true, setDefaultsOnInsert: true }
-    )
-    await Order.findByIdAndUpdate(orderId, { status: 'paid', finalPrice: amount })
+    const session = await mongoose.startSession()
+    let payment
+    try {
+        await session.withTransaction(async () => {
+            payment = await Payment.findOneAndUpdate(
+                { orderId, provider, providerPaymentId },
+                { orderId, userId, amount, paymentMethod: provider === 'paypal' ? 'paypal' : 'stripe', provider, providerPaymentId, status: 'paid' },
+                { new: true, upsert: true, setDefaultsOnInsert: true, session }
+            )
+            await Order.findByIdAndUpdate(orderId, { status: 'paid', finalPrice: amount }, { session })
+        })
+    } finally {
+        await session.endSession()
+    }
     return payment
+}
+
+const stripeWebhook = async (req, res) => {
+    if (!process.env.STRIPE_SECRET_KEY || !process.env.STRIPE_WEBHOOK_SECRET) {
+        return res.status(503).json({ message: 'Stripe webhook is not configured.' })
+    }
+
+    try {
+        const stripe = Stripe(process.env.STRIPE_SECRET_KEY)
+        const event = stripe.webhooks.constructEvent(
+            req.body,
+            req.get('stripe-signature'),
+            process.env.STRIPE_WEBHOOK_SECRET
+        )
+
+        if (event.type !== 'checkout.session.completed') {
+            return res.json({ received: true })
+        }
+
+        const session = event.data.object
+        if (session.payment_status !== 'paid' || !session.metadata?.orderId) {
+            return res.status(400).json({ message: 'Stripe session is not a completed order payment.' })
+        }
+
+        const order = await Order.findById(session.metadata.orderId).populate('quote')
+        if (!order) return res.status(404).json({ message: 'Order not found.' })
+
+        const paidAmount = Number(session.amount_total || 0) / 100
+        const expectedAmount = Number(order.quote?.depositAmount || order.finalPrice || order.totalPrice || 0)
+        if (Math.abs(paidAmount - expectedAmount) > 0.01) {
+            return res.status(400).json({ message: 'Stripe payment amount does not match the order.' })
+        }
+
+        const payment = await finishPayment({
+            orderId: order._id,
+            userId: order.userId,
+            amount: paidAmount,
+            provider: 'stripe',
+            providerPaymentId: session.id
+        })
+        return res.json({ received: true, paymentId: payment._id })
+    } catch (error) {
+        if (error.type === 'StripeSignatureVerificationError') {
+            return res.status(400).json({ message: 'Invalid Stripe webhook signature.' })
+        }
+        console.error('Error processing Stripe webhook:', error)
+        return res.status(500).json({ message: 'Unable to process Stripe webhook.' })
+    }
 }
 
 const createPayment = async (req, res) => {
@@ -70,6 +126,14 @@ const confirmPayment = async (req, res) => {
 
         if (!payment) {
             return res.status(404).json({ message: 'Payment not found' })
+        }
+
+        if (payment.provider !== 'internal') {
+            return res.status(400).json({ message: 'External payments must be confirmed by their provider flow.' })
+        }
+
+        if (payment.status === 'paid') {
+            return res.json({ message: 'Payment is already confirmed', payment })
         }
 
         const order = await Order.findById(payment.orderId)
@@ -183,6 +247,10 @@ const capturePaypalOrder = async (req, res) => {
             return res.status(403).json({ message: 'Forbidden' })
         }
 
+        if (paymentRecord.status === 'paid') {
+            return res.json({ message: 'PayPal payment is already confirmed', payment: paymentRecord })
+        }
+
         const paypalOrder = await paypalRequest(`/v2/checkout/orders/${req.params.orderId}/capture`, { method: 'POST', body: '{}' })
         if (paypalOrder.status !== 'COMPLETED') return res.status(400).json({ message: 'PayPal payment is not complete.' })
         if (paypalOrder.id !== paymentRecord.providerPaymentId) return res.status(400).json({ message: 'PayPal order ID mismatch.' })
@@ -199,6 +267,7 @@ const capturePaypalOrder = async (req, res) => {
 const getPaymentsForOrder = async (req, res) => {
     try {
         const { orderId } = req.params
+        if (!mongoose.isValidObjectId(orderId)) return res.status(400).json({ message: 'Invalid order ID' })
         const order = await Order.findById(orderId).select('userId')
         if (!order) return res.status(404).json({ message: 'Order not found' })
         if (req.user.role !== 'Admin' && order.userId.toString() !== req.user._id.toString()) {
@@ -215,6 +284,7 @@ const getPaymentsForOrder = async (req, res) => {
 module.exports = {
     createPayment,
     confirmPayment,
+    stripeWebhook,
     createStripeCheckout,
     completeStripeCheckout,
     createPaypalOrder,

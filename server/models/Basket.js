@@ -36,4 +36,7 @@ const basketScema = new mongoose.Schema({
     }]
 
 })
+
+basketScema.index({ userId: 1 }, { unique: true })
+
 module.exports = mongoose.model("basket", basketScema)

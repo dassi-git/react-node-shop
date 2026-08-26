@@ -1,8 +1,25 @@
 const Order = require('../models/Order')
 const Quote = require('../models/Quote')
 const Product = require('../models/Product')
+const Payment = require('../models/Payment')
 const mongoose = require('mongoose')
 const { resolveSeasonalSelections } = require('../services/fruitSeasonService')
+
+const ORDER_STATUS_TRANSITIONS = {
+    draft: ['quote_requested', 'cancelled'],
+    quote_requested: ['quote_sent', 'cancelled'],
+    quote_sent: ['quote_accepted', 'quote_rejected', 'cancelled'],
+    quote_accepted: ['payment_pending', 'cancelled'],
+    quote_rejected: ['quote_requested', 'cancelled'],
+    payment_pending: ['paid', 'cancelled'],
+    paid: ['confirmed'],
+    confirmed: ['preparing'],
+    preparing: ['ready_for_delivery'],
+    ready_for_delivery: ['in_delivery'],
+    in_delivery: ['completed'],
+    completed: [],
+    cancelled: []
+}
 
 const generateOrderNumber = () => {
     const timestamp = Date.now().toString(36).toUpperCase()
@@ -33,6 +50,23 @@ const createOrder = async (req, res) => {
 
         if (!Array.isArray(items) || items.length === 0) {
             return res.status(400).json({ message: 'At least one item is required.' })
+        }
+        if (items.length > 50 || items.some((item) => !item || typeof item !== 'object')) {
+            return res.status(400).json({ message: 'Order items are invalid.' })
+        }
+
+        const address = deliveryAddress || {}
+        if (!address || typeof address !== 'object' || !String(address.city || '').trim() || !String(address.street || '').trim()) {
+            return res.status(400).json({ message: 'Delivery city and street are required.' })
+        }
+        if (deliveryDate !== undefined && deliveryDate !== null) {
+            const parsedDeliveryDate = new Date(deliveryDate)
+            if (Number.isNaN(parsedDeliveryDate.getTime())) {
+                return res.status(400).json({ message: 'Delivery date is invalid.' })
+            }
+        }
+        if (notes !== undefined && String(notes).length > 2000) {
+            return res.status(400).json({ message: 'Order notes are too long.' })
         }
 
         const normalizedItems = await Promise.all(items.map(async (item) => {
@@ -80,47 +114,47 @@ const createOrder = async (req, res) => {
         }
         const totalPrice = subtotal + fee
 
-        const productItems = normalizedItems.filter((item) => mongoose.isValidObjectId(item.productId))
-        const reservedItems = []
+        const session = await mongoose.startSession()
+        let createdOrder
         try {
-            for (const item of productItems) {
-                const reserved = await Product.findOneAndUpdate(
-                    { _id: item.productId, quantity: { $gte: item.quantity }, inventoryStatus: { $ne: 'OUTOFSTOCK' }, productExist: { $ne: 'OUTOFSTOCK' } },
-                    { $inc: { quantity: -item.quantity } },
-                    { new: true }
-                )
-                if (!reserved) throw new Error(`${item.productName} does not have enough stock.`)
-                reservedItems.push(item)
-                if (reserved.quantity === 0) {
-                    await Product.findByIdAndUpdate(item.productId, { inventoryStatus: 'OUTOFSTOCK', productExist: 'OUTOFSTOCK' })
+            await session.withTransaction(async () => {
+                for (const item of normalizedItems.filter((entry) => mongoose.isValidObjectId(entry.productId))) {
+                    const reserved = await Product.findOneAndUpdate(
+                        { _id: item.productId, quantity: { $gte: item.quantity }, inventoryStatus: { $ne: 'OUTOFSTOCK' }, productExist: { $ne: 'OUTOFSTOCK' } },
+                        { $inc: { quantity: -item.quantity } },
+                        { new: true, session }
+                    )
+                    if (!reserved) throw new Error(`${item.productName} does not have enough stock.`)
+                    if (reserved.quantity === 0) {
+                        await Product.findByIdAndUpdate(item.productId, { inventoryStatus: 'OUTOFSTOCK', productExist: 'OUTOFSTOCK' }, { session })
+                    }
                 }
-            }
 
-            const order = await Order.create({
-            userId: req.user._id,
-            orderNumber: generateOrderNumber(),
-            status: 'quote_requested',
-            subtotal,
-            deliveryFee: fee,
-            totalPrice,
-            finalPrice: totalPrice,
-            deliveryDate: deliveryDate || null,
-            deliveryAddress: deliveryAddress || {},
-            notes: notes || '',
-                items: normalizedItems
+                const [order] = await Order.create([{
+                    userId: req.user._id,
+                    orderNumber: generateOrderNumber(),
+                    status: 'quote_requested',
+                    subtotal,
+                    deliveryFee: fee,
+                    totalPrice,
+                    finalPrice: totalPrice,
+                    deliveryDate: deliveryDate || null,
+                    deliveryAddress: {
+                        city: String(address.city).trim(),
+                        street: String(address.street).trim(),
+                        zipCode: String(address.zipCode || '').trim(),
+                        phone: String(address.phone || '').trim()
+                    },
+                    notes: String(notes || '').trim(),
+                    items: normalizedItems
+                }], { session })
+                createdOrder = order
             })
-
-            return res.status(201).json({ message: 'Order created successfully', order })
-        } catch (reservationError) {
-            for (const reservedItem of reservedItems) {
-                await Product.findByIdAndUpdate(reservedItem.productId, {
-                    $inc: { quantity: reservedItem.quantity },
-                    inventoryStatus: 'INSTOCK',
-                    productExist: 'INSTOCK'
-                })
-            }
-            throw reservationError
+        } finally {
+            await session.endSession()
         }
+
+        return res.status(201).json({ message: 'Order created successfully', order: createdOrder })
     } catch (error) {
         console.error('Error creating order:', error)
         if (error.message.includes('Quantity must') || error.message.includes('Unit price must') || error.message.includes('Product no longer') || error.message.includes('out of stock') || error.message.includes('does not have enough stock') || error.message.includes('יש לבחור') || error.message.includes('בחירה לא זמינה') || error.message.includes('ניתן לבחור ערך')) {
@@ -209,13 +243,20 @@ const updateOrderStatus = async (req, res) => {
             return res.status(400).json({ message: 'Invalid order status' })
         }
 
-        const order = await Order.findById(id)
+        const order = await Order.findById(id).populate('quote')
         if (!order) {
             return res.status(404).json({ message: 'Order not found' })
         }
 
-        if (order.status === 'completed' || order.status === 'cancelled') {
-            return res.status(400).json({ message: 'Completed or cancelled orders cannot be changed.' })
+        if (!ORDER_STATUS_TRANSITIONS[order.status]?.includes(status)) {
+            return res.status(400).json({ message: `Invalid status transition from ${order.status} to ${status}.` })
+        }
+        if (status === 'quote_accepted' && (!order.quote || order.quote.status !== 'accepted')) {
+            return res.status(400).json({ message: 'An accepted quote is required before this status.' })
+        }
+        if (status === 'paid') {
+            const paidPayment = await Payment.exists({ orderId: order._id, status: 'paid' })
+            if (!paidPayment) return res.status(400).json({ message: 'A confirmed payment is required before this status.' })
         }
 
         order.status = status

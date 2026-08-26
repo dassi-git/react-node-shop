@@ -1,5 +1,6 @@
 const Quote = require('../models/Quote')
 const Order = require('../models/Order')
+const mongoose = require('mongoose')
 
 const createQuote = async (req, res) => {
     try {
@@ -7,6 +8,9 @@ const createQuote = async (req, res) => {
 
         if (!orderId) {
             return res.status(400).json({ message: 'Order ID is required.' })
+        }
+        if (!mongoose.isValidObjectId(orderId)) {
+            return res.status(400).json({ message: 'Invalid order ID.' })
         }
 
         const order = await Order.findById(orderId)
@@ -25,26 +29,49 @@ const createQuote = async (req, res) => {
         if (!Number.isFinite(Number(depositAmount || 0)) || Number(depositAmount || 0) < 0 || Number(depositAmount || 0) > Number(quotePrice)) {
             return res.status(400).json({ message: 'Deposit must be between zero and the quote price.' })
         }
+        if (notes !== undefined && String(notes).length > 2000) {
+            return res.status(400).json({ message: 'Quote notes are too long.' })
+        }
 
-        const quote = await Quote.create({
-            orderId,
-            adminId: req.user._id,
-            quotePrice: Number(quotePrice || 0),
-            deliveryFee: Number(deliveryFee || 0),
-            depositAmount: Number(depositAmount || 0),
-            notes: notes || '',
-            validUntil: validUntil && new Date(validUntil) > new Date() ? validUntil : new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
-            status: 'sent'
-        })
+        let normalizedValidUntil = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)
+        if (validUntil !== undefined && validUntil !== null) {
+            normalizedValidUntil = new Date(validUntil)
+            if (Number.isNaN(normalizedValidUntil.getTime()) || normalizedValidUntil <= new Date()) {
+                return res.status(400).json({ message: 'Quote expiration date must be valid and in the future.' })
+            }
+        }
 
-        order.quote = quote._id
-        order.deliveryFee = Number(deliveryFee || order.deliveryFee || 0)
-        order.finalPrice = Number(quotePrice || 0) + Number(deliveryFee || 0)
-        order.status = 'quote_sent'
-        await order.save()
+        const session = await mongoose.startSession()
+        let quote
+        try {
+            await session.withTransaction(async () => {
+                const createdQuotes = await Quote.create([{
+                    orderId,
+                    adminId: req.user._id,
+                    quotePrice: Number(quotePrice || 0),
+                    deliveryFee: Number(deliveryFee || 0),
+                    depositAmount: Number(depositAmount || 0),
+                    notes: String(notes || '').trim(),
+                    validUntil: normalizedValidUntil,
+                    status: 'sent'
+                }], { session })
+                quote = createdQuotes[0]
+
+                order.quote = quote._id
+                order.deliveryFee = Number(deliveryFee || order.deliveryFee || 0)
+                order.finalPrice = Number(quotePrice || 0) + Number(deliveryFee || 0)
+                order.status = 'quote_sent'
+                await order.save({ session })
+            })
+        } finally {
+            await session.endSession()
+        }
 
         return res.status(201).json({ message: 'Quote sent successfully', quote, order })
     } catch (error) {
+        if (error.code === 11000) {
+            return res.status(409).json({ message: 'An active quote already exists for this order.' })
+        }
         console.error('Error creating quote:', error)
         return res.status(500).json({ message: 'Server error creating quote' })
     }
@@ -53,6 +80,7 @@ const createQuote = async (req, res) => {
 const getQuotesForOrder = async (req, res) => {
     try {
         const { orderId } = req.params
+        if (!mongoose.isValidObjectId(orderId)) return res.status(400).json({ message: 'Invalid order ID' })
         const order = await Order.findById(orderId)
         if (!order) return res.status(404).json({ message: 'Order not found' })
         if (req.user.role !== 'Admin' && order.userId.toString() !== req.user._id.toString()) {
@@ -69,6 +97,7 @@ const getQuotesForOrder = async (req, res) => {
 const acceptQuote = async (req, res) => {
     try {
         const { id } = req.params
+        if (!mongoose.isValidObjectId(id)) return res.status(400).json({ message: 'Invalid quote ID' })
         const quote = await Quote.findById(id)
         if (!quote) {
             return res.status(404).json({ message: 'Quote not found' })
@@ -86,11 +115,17 @@ const acceptQuote = async (req, res) => {
             return res.status(400).json({ message: 'This quote is no longer available.' })
         }
 
-        quote.status = 'accepted'
-        order.status = 'quote_accepted'
-
-        await quote.save()
-        await order.save()
+        const session = await mongoose.startSession()
+        try {
+            await session.withTransaction(async () => {
+                quote.status = 'accepted'
+                order.status = 'quote_accepted'
+                await quote.save({ session })
+                await order.save({ session })
+            })
+        } finally {
+            await session.endSession()
+        }
 
         return res.json({ message: 'Quote accepted', quote, order })
     } catch (error) {
@@ -102,6 +137,7 @@ const acceptQuote = async (req, res) => {
 const rejectQuote = async (req, res) => {
     try {
         const { id } = req.params
+        if (!mongoose.isValidObjectId(id)) return res.status(400).json({ message: 'Invalid quote ID' })
         const quote = await Quote.findById(id)
         if (!quote) {
             return res.status(404).json({ message: 'Quote not found' })
@@ -119,11 +155,17 @@ const rejectQuote = async (req, res) => {
             return res.status(400).json({ message: 'This quote is no longer available.' })
         }
 
-        quote.status = 'rejected'
-        order.status = 'quote_rejected'
-
-        await quote.save()
-        await order.save()
+        const session = await mongoose.startSession()
+        try {
+            await session.withTransaction(async () => {
+                quote.status = 'rejected'
+                order.status = 'quote_rejected'
+                await quote.save({ session })
+                await order.save({ session })
+            })
+        } finally {
+            await session.endSession()
+        }
 
         return res.json({ message: 'Quote rejected', quote, order })
     } catch (error) {

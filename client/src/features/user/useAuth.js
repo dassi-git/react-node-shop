@@ -10,7 +10,9 @@ const useAuth = () => {
 
     try {
         const tokenObj = jwtDecode(token)
-        return tokenObj && typeof tokenObj === "object" ? tokenObj : null
+        if (!tokenObj || typeof tokenObj !== "object") return null
+        if (tokenObj.exp && Number(tokenObj.exp) * 1000 <= Date.now()) return null
+        return tokenObj
     } catch (error) {
         return null
     }

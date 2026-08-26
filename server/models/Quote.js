@@ -41,4 +41,9 @@ const quoteSchema = new mongoose.Schema({
     }
 }, { timestamps: true })
 
+quoteSchema.index(
+    { orderId: 1 },
+    { unique: true, partialFilterExpression: { status: { $in: ['sent', 'accepted'] } } }
+)
+
 module.exports = mongoose.model('Quote', quoteSchema)

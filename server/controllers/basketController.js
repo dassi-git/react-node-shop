@@ -1,5 +1,6 @@
 const Basket = require("../models/Basket")
 const Product = require("../models/Product")
+const mongoose = require('mongoose')
 const { resolveSeasonalSelections } = require('../services/fruitSeasonService')
 
 const validateOptions = (product, selectedOptions = {}) => {
@@ -22,6 +23,9 @@ const validateOptions = (product, selectedOptions = {}) => {
 
 const getId = async (req, res) => {
     try {
+        if (mongoose.connection.readyState !== 1) {
+            return res.status(503).json({ message: 'Basket is temporarily unavailable' })
+        }
         const userId = req.user._id
         const myBasket = await Basket.findOne({ userId: userId }).populate({
             path: 'Products.type',
@@ -57,6 +61,9 @@ const getId = async (req, res) => {
 const deletebasket = async (req, res) => {
     try {
         const { id } = req.params
+        if (!mongoose.isValidObjectId(id)) {
+            return res.status(400).json({ message: 'Invalid basket item or product ID' })
+        }
         const myBasket = await Basket.findOne({ userId: req.user._id })
         
         if (!myBasket) {
@@ -106,6 +113,9 @@ const deleteAllbasket = async (req, res) => {
 const updateBasket = async (req, res) => {
     try {
         const { id } = req.params
+        if (!mongoose.isValidObjectId(id)) {
+            return res.status(400).json({ message: 'Invalid product ID' })
+        }
         const selectedOptions = req.body?.selectedOptions || {}
         const seasonalDate = req.body?.seasonalDate ? new Date(req.body.seasonalDate) : new Date()
         if (Number.isNaN(seasonalDate.getTime())) return res.status(400).json({ message: 'תאריך עונתי אינו תקין' })

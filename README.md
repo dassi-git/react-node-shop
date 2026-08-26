@@ -1,6 +1,6 @@
 # 🛒 react-node-shop
 
-A professional, production-ready e-commerce application built with the MERN stack featuring enterprise-grade security, comprehensive error handling, and advanced middleware protection.
+A learning-focused e-commerce application built with the MERN stack, with server-side validation, authentication, payment integrations, and operational safeguards. Review the production checklist before deployment.
 
 ## 🌟 Key Features
 
@@ -68,7 +68,7 @@ npm install
 
 `server/.env`:
 ```env
-MONGO_URI=mongodb://localhost:27017/ecommerce
+DATABASE_URI=mongodb://localhost:27017/ecommerce
 ACCESS_TOKEN_SECRET=your-super-secret-key
 PORT=8888
 EMAIL_USER=your-email@gmail.com
@@ -83,6 +83,11 @@ REACT_APP_API_URL=http://localhost:8888
 REACT_APP_API_BASE_URL=http://localhost:8888/api/
 ```
 
+For Stripe test payments, also configure `STRIPE_SECRET_KEY` and
+`STRIPE_WEBHOOK_SECRET` in `server/.env`. Send `checkout.session.completed`
+events to `POST /api/payment/stripe/webhook`; the server verifies the Stripe
+signature before marking an order as paid.
+
 **3. Run Application**
 ```bash
 # Terminal 1 - Server
@@ -95,6 +100,24 @@ npm start
 ```
 
 Access at: `http://localhost:3000`
+
+### Validation
+
+```bash
+# Server smoke tests
+cd server
+npm test
+
+# Client tests and production build
+cd ../client
+npm test -- --watchAll=false --runInBand
+npm run build
+```
+
+Health endpoints:
+
+- `GET /health` confirms that the server process is running.
+- `GET /ready` confirms that the server is connected to MongoDB.
 
 ## 🔒 Security Features
 

@@ -8,7 +8,7 @@ const RequireAdmin = ({ children }) => {
     const objToken = useAuth();
 
     // אם המשתמש לא מחובר בכלל - העבר להתחברות
-    if (!isUserLoggedIn) {
+    if (!isUserLoggedIn || !objToken) {
         return <Navigate to="/login" state={{ from: location }} replace />;
     }
 
