@@ -95,50 +95,6 @@ export default function GetBasket() {
         }
     };
 
-    const leftToolbarTemplate = () => {
-        return (
-            <div className="flex flex-wrap gap-2 align-items-center">
-                <Button 
-                    label="המשך קניות" 
-                    icon="pi pi-shopping-bag" 
-                    outlined
-                    onClick={() => navigate('/allProduct')}
-                />
-                <Button 
-                    label="רוקן סל" 
-                    icon="pi pi-trash" 
-                    severity="danger" 
-                    outlined
-                    onClick={confirmDeleteSelected} 
-                    disabled={!products || products.length === 0} 
-                />
-            </div>
-        );
-    };
-
-    const rightToolbarTemplate = () => {
-        const totalItems = products.reduce((sum, product) => sum + product.quantity, 0);
-        const totalPrice = products.reduce((sum, product) => sum + (product.price * product.quantity), 0);
-        
-        return (
-            <div className="flex flex-wrap gap-3 align-items-center">
-                <div className="flex flex-column align-items-end">
-                    <span style={{ fontSize: '0.9rem', color: '#6c757d' }}>סה"כ פריטים: {totalItems}</span>
-                    <span style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#667eea' }}>
-                        {formatCurrency(totalPrice)}
-                    </span>
-                </div>
-                <Button 
-                    label="המשך לבקשת הצעת מחיר"
-                    icon="pi pi-file-edit"
-                    className="basket-checkout-button"
-                    size="large"
-                    onClick={() => navigate('/quote-request')}
-                />
-            </div>
-        );
-    };
-
     const itemTemplate = (product) => {
         const totalPrice = product.price * product.quantity;
         

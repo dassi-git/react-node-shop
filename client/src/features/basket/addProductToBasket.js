@@ -9,7 +9,7 @@ const AddProductToBasket = ({ productId, productName, disabled = false }) => {
 
     const handleAddToBasket = async () => {
         try {
-            const response = await updateProduct(productId).unwrap();
+            await updateProduct(productId).unwrap();
             toast.current.show({ 
                 severity: 'success', 
                 summary: 'נוסף בהצלחה', 

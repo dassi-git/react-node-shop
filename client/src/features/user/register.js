@@ -12,7 +12,6 @@ import './Auth.css';
                 
 const Register = () => {
     const toast = useRef(null);
-    const [value, setValue] = useState('');
     const [register, { isError, isSuccess, error, isLoading }] = useRegisterMutation()
     const navigate=useNavigate();
 
@@ -41,7 +40,7 @@ const Register = () => {
             toast.current.show({severity:'success', summary: 'הצלחה', detail: 'נרשמת בהצלחה! מעביר לדף התחברות...', life: 3000});
             setTimeout(() => navigate("/login"), 1000);
         }
-    }, [isSuccess])
+    }, [isSuccess, navigate])
     
     useEffect(() => {
         if (isError && error) {

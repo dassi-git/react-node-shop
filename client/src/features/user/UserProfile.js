@@ -13,7 +13,7 @@ import useAuth from './useAuth';
 import './UserProfile.css';
 
 const UserProfile = () => {
-    const { _id, name: currentName, email: currentEmail, role: currentRole } = useAuth();
+    const { _id } = useAuth();
     const [updateUser, { isLoading }] = useUpdateUserMutation();
     const { data: userData, isLoading: isLoadingUsers, error } = useGetCurrentUserProfileQuery();
     const toast = useRef(null);

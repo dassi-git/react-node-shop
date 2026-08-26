@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import {Provider} from "react-redux"
 import store from './app/store';
-import { PrimeReactProvider, PrimeReactContext } from 'primereact/api';
+import { PrimeReactProvider } from 'primereact/api';
 // import 'primeflex/primeflex.scss';
 import '/node_modules/primeflex/primeflex.css'
 import 'primeicons/primeicons.css';

@@ -18,10 +18,10 @@
 |---|---|---|
 | Frontend unit tests | `PASS` | 1 suite, 2 tests עברו |
 | Frontend production build במצב רגיל | `PASS` | נבנה בעבר עם אזהרות |
-| Frontend production build במצב CI | `FAIL` | אזהרות ESLint הפכו לשגיאות |
+| Frontend production build במצב CI | `FIXED` | build עבר בהצלחה ללא אזהרות ESLint לאחר cleanup |
 | Backend syntax checks | `PASS` | קבצי הליבה עברו `node --check` |
 | Server dependency audit | `PASS` | `0 vulnerabilities` |
-| Live API smoke test | `BLOCKED` | השרת לא היה פעיל בזמן הבדיקה |
+| Live API smoke test | `PASS` | Frontend `200`, products `200`, protected routes `401` |
 | תרחיש משתמש מלא | `OPEN` | דורש חשבון משתמש, מנהל וסביבת DB יציבה |
 | תשלום Stripe | `BLOCKED` | חסר `STRIPE_SECRET_KEY` |
 | תשלום PayPal | `BLOCKED` | חסרים פרטי Sandbox |
@@ -30,7 +30,7 @@
 
 ### TEST-001 - CI build נכשל בגלל אזהרות ESLint
 
-- **סטטוס:** `OPEN`
+- **סטטוס:** `FIXED`
 - **חומרה:** בינונית, חוסם אישור build נקי ל־production.
 - **פקודה:** `CI=true npm --prefix client test -- --watchAll=false` ולאחר מכן `CI=true npm --prefix client run build`.
 - **תוצאה:** בדיקות היחידה עברו, אבל ה־build נכשל כי `react-scripts` מתייחס לאזהרות ESLint כשגיאות במצב CI.
@@ -42,17 +42,18 @@
   - `client/src/features/user/register.js`
   - `client/src/index.js`
 - **סוגי בעיות:** משתנים וייבואים לא בשימוש, פונקציות לא בשימוש ו־dependency חסר ב־`useEffect`.
-- **מה תוקן:** עדיין לא תוקן בסבב זה.
-- **השלב הבא:** לנקות את האזהרות, להריץ שוב build עם `CI=true`, ולשמור את התוצאה כאן.
+- **מה תוקן:** הוסרו imports, משתנים ו־helpers לא בשימוש, ותוקן dependency של `navigate` ב־`useEffect`.
+- **בדיקה חוזרת:** `CI=true npm --prefix client run build` עבר עם `Compiled successfully` וללא אזהרות ESLint.
+- **הערה:** נשארו הודעות תחזוקה של Node/Browserslist בלבד, שאינן כשלי lint.
 
 ### TEST-002 - בדיקת API חיה לא הושלמה
 
-- **סטטוס:** `BLOCKED`
+- **סטטוס:** `PASS`
 - **חומרה:** גבוהה לפני staging, כי זו בדיקת קבלה של תהליך אמיתי.
-- **סיבה:** שרת ה־API לא היה פעיל בזמן בדיקת ה־smoke test.
-- **מה ידוע:** בבדיקות קודמות `/api/product` החזיר `200` ו־3 מוצרים כאשר השרת היה פעיל.
-- **מה עדיין צריך לבדוק:** `/api/product`, הרשמה, התחברות, סל, יצירת הזמנה, יצירת הצעה, אישור הצעה, ותשלום.
-- **השלב הבא:** להפעיל MongoDB/שרת בצורה יציבה, להריץ תרחיש API מלא ולשמור את קודי התגובה.
+- **סיבה קודמת:** שרת ה־API לא היה פעיל בזמן הרצה קודמת.
+- **בדיקה חוזרת:** `/api/product` החזיר `200`; `/api/order/my`, `/api/quote/order/test` ו־`/api/payment/order/test` החזירו `401` ללא token; האתר החזיר `200`.
+- **מה עדיין צריך לבדוק:** הרשמה, התחברות, סל ותרחיש הזמנה מלא עם משתמשים אמיתיים.
+- **השלב הבא:** להריץ תרחיש authenticated מלא בסביבת staging.
 
 ### TEST-003 - תשלום חיצוני אינו מוגדר
 
@@ -98,6 +99,7 @@
 - `FIX-007` - seed development אינו מוחק מוצרים קיימים.
 - `FIX-008` - timeout לחיבור MongoDB קוצר כדי למנוע המתנה ארוכה.
 - `FIX-009` - חולשות production dependencies תוקנו ל־`0 vulnerabilities`.
+- `FIX-010` - אזהרות ESLint נוקו ו־CI build עבר ללא warnings.
 
 ## סדר בדיקות להמשך
 

@@ -5,9 +5,6 @@ import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Toast } from 'primereact/toast';
 import { Button } from 'primereact/button';
-import { FileUpload } from 'primereact/fileupload';
-import { Rating } from 'primereact/rating';
-import { Toolbar } from 'primereact/toolbar';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { IconField } from 'primereact/iconfield';
 import { InputIcon } from 'primereact/inputicon';
@@ -15,8 +12,6 @@ import { RadioButton } from 'primereact/radiobutton';
 import { InputNumber } from 'primereact/inputnumber';
 import { Dialog } from 'primereact/dialog';
 import { InputText } from 'primereact/inputtext';
-import { Tag } from 'primereact/tag';
-import { Skeleton } from 'primereact/skeleton';
 import { useNavigate } from 'react-router-dom';
 import {useCreateProductMutation,useDelateProductMutation,useUppdateProductMutation,useGetAllProductQuery}from "./productSlice"
 import './AdminProducts.css';
@@ -38,7 +33,6 @@ export default function AdminProducts() {
     const [filteredProducts, setFilteredProducts] = useState(null);
     const [productDialog, setProductDialog] = useState(false);
     const [deleteProductDialog, setDeleteProductDialog] = useState(false);
-    const [deleteProductsDialog, setDeleteProductsDialog] = useState(false);
     const [product, setProduct] = useState(emptyProduct);
     const [selectedProducts, setSelectedProducts] = useState(null);
     const [submitted, setSubmitted] = useState(false);
@@ -74,29 +68,14 @@ export default function AdminProducts() {
         setFilteredProducts(filtered);
     };
 
-    const formatCurrency = (value) => {
-        return value.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
-    };
-
-    const openNew = () => {
-        setProduct(emptyProduct);
-        setSubmitted(false);
-        setProductDialog(true);
-    };
-
     const hideDialog = () => {
         setSubmitted(false);
         setProductDialog(false);
     };
     const hideDeleteProductDialog = () => {
-
         setDeleteProductDialog(false);
     };
-
-    const hideDeleteProductsDialog = () => {
-        setDeleteProductsDialog(false);
-    };
-const [creatProduct,{isSuccess}]=useCreateProductMutation()
+const [creatProduct]=useCreateProductMutation()
 const [updateProduct]=useUppdateProductMutation()
     const saveProduct = async () => {
         setSubmitted(true);
@@ -137,11 +116,6 @@ const [updateProduct]=useUppdateProductMutation()
         }
     // }
 
-    };
-
-    const editProduct = (product) => {
-        setProduct({ ...product });
-        setProductDialog(true);
     };
 
     const confirmDeleteProduct = (product) => {
@@ -190,23 +164,6 @@ const [updateProduct]=useUppdateProductMutation()
         return id;
     };
 
-    const exportCSV = () => {
-        dt.current.exportCSV();
-    };
-
-    const confirmDeleteSelected = () => {
-        setDeleteProductsDialog(true);
-    };
-
-    const deleteSelectedProducts = () => {
-        let _products = products.filter((val) => !selectedProducts.includes(val));
-
-        setProducts(_products);
-        setDeleteProductsDialog(false);
-        setSelectedProducts(null);
-        toast.current.show({ severity: 'success', summary: 'Successful', detail: 'Products Deleted', life: 3000 });
-    };
-
     const onCategoryChange = (e) => {
         let _product = { ...product };
 
@@ -232,32 +189,12 @@ const [updateProduct]=useUppdateProductMutation()
         setProduct(_product);
     };
 
-    const leftToolbarTemplate = () => {
-        return (
-            <div className="flex flex-wrap gap-2">
-                <Button label="New" icon="pi pi-plus" severity="success" onClick={openNew} />
-            </div>
-        );
-    };
-
-    const rightToolbarTemplate = () => {
-        return <Button label="Export" icon="pi pi-upload" className="p-button-help" onClick={exportCSV} />;
-    };
-
     const imageBodyTemplate = (rowData) => {
         return <img src={`${process.env.REACT_APP_API_URL || 'http://localhost:8888'}/${rowData.image}`} alt={rowData.name} className="admin-product-image" />;
     };
 
     const priceBodyTemplate = (rowData) => {
         return <span className="admin-product-price">₪{rowData.price}</span>;
-    };
-
-    const ratingBodyTemplate = (rowData) => {
-        return <Rating value={rowData.rating} readOnly cancel={false} />;
-    };
-
-    const statusBodyTemplate = (rowData) => {
-        return <Tag value={rowData.inventoryStatus} severity={getSeverity(rowData)}></Tag>;
     };
 
     const actionBodyTemplate = (rowData) => {
@@ -285,31 +222,6 @@ const [updateProduct]=useUppdateProductMutation()
         );
     };
 
-    const getSeverity = (product) => {
-        switch (product.inventoryStatus) {
-            case 'INSTOCK':
-                return 'success';
-
-            case 'LOWSTOCK':
-                return 'warning';
-
-            case 'OUTOFSTOCK':
-                return 'danger';
-
-            default:
-                return null;
-        }
-    };
-
-    const header = (
-        <div className="flex flex-wrap gap-2 align-items-center justify-content-between">
-            <h4 className="m-0">Manage Products</h4>
-            <IconField iconPosition="left">
-                <InputIcon className="pi pi-search" />
-                <InputText type="search" onInput={(e) => setGlobalFilter(e.target.value)} placeholder="Search..." />
-            </IconField>
-        </div>
-    );
     const productDialogFooter = (
         <React.Fragment>
             <Button label="Cancel" icon="pi pi-times" outlined onClick={hideDialog} />
@@ -320,12 +232,6 @@ const [updateProduct]=useUppdateProductMutation()
         <React.Fragment>
             <Button label="ביטול" icon="pi pi-times" outlined onClick={hideDeleteProductDialog} />
             <Button label="אישור" icon="pi pi-check" severity="danger" onClick={deleteProduct} />
-        </React.Fragment>
-    );
-    const deleteProductsDialogFooter = (
-        <React.Fragment>
-            <Button label="ביטול" icon="pi pi-times" outlined onClick={hideDeleteProductsDialog} />
-            <Button label="אישור" icon="pi pi-check" severity="danger" onClick={deleteSelectedProducts} />
         </React.Fragment>
     );
 
