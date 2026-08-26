@@ -218,19 +218,15 @@ const forgotPassword = async (req, res) => {
         }
         
         await PasswordReset.deleteMany({ userId: user._id })
-        console.log('Old tokens deleted')
         
         const resetToken = crypto.randomBytes(32).toString('hex')
-        console.log('New token created')
         
         await PasswordReset.create({
             userId: user._id,
             email: user.email,
             token: resetToken
         })
-        console.log('Token saved to database')
         
-        console.log('Attempting to send email...')
         const emailResult = await sendPasswordResetEmail(email, resetToken, user.name)
         
         if (!emailResult.success) {
@@ -238,7 +234,6 @@ const forgotPassword = async (req, res) => {
             return res.json({ message: 'If the email exists, a reset link has been sent' })
         }
         
-        console.log('✅ המייל נשלח בהצלחה!')
         return res.json({ message: 'Password reset link has been sent to your email' })
     } catch (error) {
         console.error('❌ שגיאה באיפוס סיסמה:', error)

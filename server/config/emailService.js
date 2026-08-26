@@ -17,8 +17,6 @@ const createTransporter = () => {
 };
 
 const sendPasswordResetEmail = async (email, resetToken, userName) => {
-    console.log('Sending email to:', email);
-    
     const transporter = createTransporter();
     
     const resetUrl = `${process.env.CLIENT_URL || 'http://localhost:3000'}/reset-password/${resetToken}`;
