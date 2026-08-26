@@ -51,7 +51,23 @@ const createOrder = async (req, res) => {
         }
         const totalPrice = subtotal + fee
 
-        const order = await Order.create({
+        const productItems = normalizedItems.filter((item) => mongoose.isValidObjectId(item.productId))
+        const reservedItems = []
+        try {
+            for (const item of productItems) {
+                const reserved = await Product.findOneAndUpdate(
+                    { _id: item.productId, quantity: { $gte: item.quantity }, inventoryStatus: { $ne: 'OUTOFSTOCK' } },
+                    { $inc: { quantity: -item.quantity } },
+                    { new: true }
+                )
+                if (!reserved) throw new Error(`${item.productName} does not have enough stock.`)
+                reservedItems.push(item)
+                if (reserved.quantity === 0) {
+                    await Product.findByIdAndUpdate(item.productId, { inventoryStatus: 'OUTOFSTOCK', productExist: 'OUTOFSTOCK' })
+                }
+            }
+
+            const order = await Order.create({
             userId: req.user._id,
             orderNumber: generateOrderNumber(),
             status: 'quote_requested',
@@ -62,10 +78,20 @@ const createOrder = async (req, res) => {
             deliveryDate: deliveryDate || null,
             deliveryAddress: deliveryAddress || {},
             notes: notes || '',
-            items: normalizedItems
-        })
+                items: normalizedItems
+            })
 
-        return res.status(201).json({ message: 'Order created successfully', order })
+            return res.status(201).json({ message: 'Order created successfully', order })
+        } catch (reservationError) {
+            for (const reservedItem of reservedItems) {
+                await Product.findByIdAndUpdate(reservedItem.productId, {
+                    $inc: { quantity: reservedItem.quantity },
+                    inventoryStatus: 'INSTOCK',
+                    productExist: 'INSTOCK'
+                })
+            }
+            throw reservationError
+        }
     } catch (error) {
         console.error('Error creating order:', error)
         if (error.message.includes('Quantity must') || error.message.includes('Unit price must') || error.message.includes('Product no longer') || error.message.includes('out of stock') || error.message.includes('does not have enough stock')) {
