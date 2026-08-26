@@ -14,6 +14,8 @@ import { Skeleton } from 'primereact/skeleton';
 import { useSelector } from 'react-redux';
 import { Toast } from 'primereact/toast';
 import { InputText } from 'primereact/inputtext';
+import { Dropdown } from 'primereact/dropdown';
+import { Slider } from 'primereact/slider';
 // import { useUppdateProductMutation } from "../basket/basketSlise";
 // import DeleteProduct from "./deleteProduct";
 import { useNavigate } from "react-router-dom"
@@ -46,11 +48,19 @@ const AllProduct = () => {
     const [layout, setLayout] = useState('grid');
     const [selectedCategory, setSelectedCategory] = useState('All');
     const [searchTerm, setSearchTerm] = useState('');
+    const [priceRange, setPriceRange] = useState([0, 1000]);
+    const [minimumRating, setMinimumRating] = useState(0);
+    const [stockFilter, setStockFilter] = useState('all');
+    const [sortOption, setSortOption] = useState('rating');
 
     const categoryOptions = useMemo(() => {
         const unique = [...new Set(normalizedProducts.map((product) => product.category || 'General'))];
         return ['All', ...unique];
     }, [normalizedProducts]);
+
+    const maxProductPrice = Math.max(100, ...normalizedProducts.map((product) => Number(product.price || 0)));
+    const activePriceMin = normalizedProducts.length > 0 ? Math.min(priceRange[0], maxProductPrice) : priceRange[0];
+    const activePriceMax = normalizedProducts.length > 0 ? Math.min(Math.max(priceRange[1], maxProductPrice), maxProductPrice) : priceRange[1];
 
     const filteredProducts = useMemo(() => {
         const term = searchTerm.trim().toLowerCase();
@@ -68,8 +78,42 @@ const AllProduct = () => {
             });
         }
 
-        return [...items].sort((a, b) => (Number(b.rating) || 0) - (Number(a.rating) || 0));
-    }, [normalizedProducts, selectedCategory, searchTerm]);
+        items = items.filter((product) => {
+            const price = Number(product.price || 0);
+            const rating = Number(product.rating || 0);
+            return price >= activePriceMin && price <= activePriceMax
+                && rating >= minimumRating
+                && (stockFilter === 'all' || product.inventoryStatus === stockFilter);
+        });
+
+        return [...items].sort((a, b) => {
+            if (sortOption === 'priceAsc') return Number(a.price || 0) - Number(b.price || 0);
+            if (sortOption === 'priceDesc') return Number(b.price || 0) - Number(a.price || 0);
+            if (sortOption === 'newest') return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+            return (Number(b.rating) || 0) - (Number(a.rating) || 0);
+        });
+    }, [normalizedProducts, selectedCategory, searchTerm, activePriceMin, activePriceMax, minimumRating, stockFilter, sortOption]);
+
+    useEffect(() => {
+        if (normalizedProducts.length > 0) {
+            setPriceRange((currentRange) => {
+                const nextMinimum = Math.min(currentRange[0], maxProductPrice);
+                const nextMaximum = currentRange[1] === 1000 || currentRange[1] < maxProductPrice
+                    ? maxProductPrice
+                    : currentRange[1];
+                return [nextMinimum, nextMaximum];
+            });
+        }
+    }, [maxProductPrice, normalizedProducts.length]);
+
+    const resetFilters = () => {
+        setSelectedCategory('All');
+        setSearchTerm('');
+        setPriceRange([0, maxProductPrice]);
+        setMinimumRating(0);
+        setStockFilter('all');
+        setSortOption('rating');
+    };
 
     const topSellingProducts = useMemo(() => filteredProducts.slice(0, 4), [filteredProducts]);
     const newestProducts = useMemo(() => {
@@ -346,6 +390,25 @@ const AllProduct = () => {
                         />
                     )}
                     <DataViewLayoutOptions layout={layout} onChange={(e) => setLayout(e.value)} />
+                </div>
+                <div className="advanced-filters" aria-label="סינון מתקדם">
+                    <div className="advanced-filter-field price-filter">
+                        <label>טווח מחיר: ₪{activePriceMin} - ₪{activePriceMax}</label>
+                        <Slider value={[activePriceMin, activePriceMax]} onChange={(e) => setPriceRange(e.value)} range min={0} max={maxProductPrice} step={1} />
+                    </div>
+                    <div className="advanced-filter-field">
+                        <label htmlFor="rating-filter">דירוג מינימלי</label>
+                        <Dropdown id="rating-filter" value={minimumRating} options={[{ label: 'כל הדירוגים', value: 0 }, { label: '3 ומעלה', value: 3 }, { label: '4 ומעלה', value: 4 }, { label: '4.5 ומעלה', value: 4.5 }]} onChange={(e) => setMinimumRating(e.value)} />
+                    </div>
+                    <div className="advanced-filter-field">
+                        <label htmlFor="stock-filter">זמינות</label>
+                        <Dropdown id="stock-filter" value={stockFilter} options={[{ label: 'כל המוצרים', value: 'all' }, { label: 'במלאי', value: 'INSTOCK' }, { label: 'מלאי נמוך', value: 'LOWSTOCK' }]} onChange={(e) => setStockFilter(e.value)} />
+                    </div>
+                    <div className="advanced-filter-field">
+                        <label htmlFor="sort-filter">מיון</label>
+                        <Dropdown id="sort-filter" value={sortOption} options={[{ label: 'דירוג גבוה', value: 'rating' }, { label: 'מחיר: מהנמוך לגבוה', value: 'priceAsc' }, { label: 'מחיר: מהגבוה לנמוך', value: 'priceDesc' }, { label: 'החדשים ביותר', value: 'newest' }]} onChange={(e) => setSortOption(e.value)} />
+                    </div>
+                    <Button label="נקה סינון" icon="pi pi-filter-slash" className="p-button-text" onClick={resetFilters} />
                 </div>
             </div>
         );

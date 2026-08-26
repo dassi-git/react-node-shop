@@ -126,6 +126,55 @@
     font-weight: 600;
 }
 
+.advanced-filters {
+    display: grid;
+    grid-template-columns: minmax(220px, 1.5fr) repeat(3, minmax(0, 1fr)) auto;
+    gap: 1rem;
+    align-items: end;
+    padding: 1rem 0 0;
+    border-top: 1px solid #e8edf0;
+    margin-top: 1rem;
+}
+
+@media (max-width: 1100px) {
+    .advanced-filters {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .price-filter {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (max-width: 560px) {
+    .advanced-filters {
+        grid-template-columns: 1fr;
+    }
+
+    .price-filter {
+        grid-column: auto;
+    }
+}
+
+.advanced-filter-field {
+    display: grid;
+    gap: .45rem;
+}
+
+.advanced-filter-field label {
+    color: #475569;
+    font-size: .82rem;
+    font-weight: 700;
+}
+
+.advanced-filter-field .p-dropdown {
+    width: 100%;
+}
+
+.price-filter .p-slider {
+    margin: .6rem .35rem .35rem;
+}
+
 .basket-button {
     background: #1a1a1a !important;
     border: 2px solid #1a1a1a !important;
