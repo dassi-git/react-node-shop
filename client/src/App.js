@@ -41,7 +41,11 @@ function App() {
             <Route path="/reset-password/:token" element={<ResetPassword />} />
             <Route path="/allProduct" element={<AllProduct />} />
             <Route path="/product/:id" element={<ProductDetail />} />
-            <Route path="/quote-request" element={<QuoteRequestPage />} />
+            <Route path="/quote-request" element={
+              <RequireAuth>
+                <QuoteRequestPage />
+              </RequireAuth>
+            } />
             <Route path="/my-orders" element={
               <RequireAuth>
                 <MyOrdersPage />

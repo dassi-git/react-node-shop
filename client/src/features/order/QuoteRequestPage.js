@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { Button } from 'primereact/button'
 import { InputText } from 'primereact/inputtext'
 import { InputNumber } from 'primereact/inputnumber'
@@ -11,8 +11,9 @@ import { useDeletebasketMutation, useGetBasketQuery } from '../basket/basketSlis
 
 const QuoteRequestPage = () => {
     const navigate = useNavigate()
+    const location = useLocation()
     const [createOrder, { isLoading }] = useCreateOrderMutation()
-    const { data: basket = [], isLoading: isBasketLoading } = useGetBasketQuery()
+    const { data: basket = [], isLoading: isBasketLoading, isError: isBasketError, refetch: refetchBasket } = useGetBasketQuery()
     const [deleteBasket] = useDeletebasketMutation()
     const toast = React.useRef(null)
 
@@ -42,6 +43,15 @@ const QuoteRequestPage = () => {
         }
 
         const basketItems = basket.filter((item) => item?._id && item?.name)
+        if (location.state?.fromBasket && (isBasketError || basketItems.length === 0)) {
+            toast.current?.show({
+                severity: 'warn',
+                summary: 'הסל לא זמין',
+                detail: isBasketError ? 'לא הצלחנו לטעון את פריטי הסל. נסה שוב.' : 'הסל ריק, יש לבחור מוצר לפני שליחת בקשה.',
+                life: 3500
+            })
+            return
+        }
         const orderItems = basketItems.length > 0
             ? basketItems.map((item) => ({
                 productId: item._id,
@@ -110,7 +120,15 @@ const QuoteRequestPage = () => {
             <Toast ref={toast} />
             <Card title="בקשת הצעת מחיר">
                 <div style={{ display: 'grid', gap: 20 }}>
-                    {basket.length > 0 && (
+                    {location.state?.fromBasket && isBasketError && (
+                        <div style={{ border: '1px solid #f0c9c0', borderRadius: 10, padding: 16, background: '#fff7f5' }}>
+                            <h3 style={{ margin: '0 0 8px' }}>לא הצלחנו לטעון את פריטי הסל</h3>
+                            <p style={{ margin: '0 0 12px' }}>הבקשה לא תישלח עד שפריטי הסל ייטענו בהצלחה.</p>
+                            <Button label="נסה שוב" icon="pi pi-refresh" onClick={refetchBasket} />
+                        </div>
+                    )}
+
+                    {basket.length > 0 && !isBasketError && (
                         <div style={{ border: '1px solid #e7d8cc', borderRadius: 10, padding: 16, background: '#fffaf5' }}>
                             <h3 style={{ margin: '0 0 12px' }}>הפריטים שבחרת להצעת המחיר</h3>
                             <div style={{ display: 'grid', gap: 10 }}>
@@ -165,7 +183,7 @@ const QuoteRequestPage = () => {
 
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
                         <Button label="חזרה למוצרים" className="p-button-outlined" onClick={() => navigate('/allProduct')} />
-                        <Button label={isLoading ? 'שולח...' : 'שלח בקשת הצעת מחיר'} onClick={handleSubmit} disabled={isLoading || isBasketLoading} />
+                        <Button label={isLoading ? 'שולח...' : 'שלח בקשת הצעת מחיר'} onClick={handleSubmit} disabled={isLoading || isBasketLoading || isBasketError || (location.state?.fromBasket && basket.length === 0)} />
                     </div>
                 </div>
             </Card>

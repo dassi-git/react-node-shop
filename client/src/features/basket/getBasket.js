@@ -28,7 +28,7 @@ export default function GetBasket() {
     const [product, setProduct] = useState(emptyProduct);
     const toast = useRef(null);
 
-    const { data: basket = [], isSuccess } = useGetBasketQuery()
+    const { data: basket = [], isSuccess, isError, refetch } = useGetBasketQuery()
 
     useEffect(() => {
         if (isSuccess) {
@@ -129,16 +129,11 @@ export default function GetBasket() {
                     </span>
                 </div>
                 <Button 
-                    label="המשך לתשלום" 
-                    icon="pi pi-credit-card" 
+                    label="המשך לבקשת הצעת מחיר"
+                    icon="pi pi-file-edit"
                     className="basket-checkout-button"
                     size="large"
-                    onClick={() => toast.current.show({ 
-                        severity: 'info', 
-                        summary: 'בקרוב', 
-                        detail: 'מערכת התשלומים תהיה זמינה בקרוב', 
-                        life: 3000 
-                    })}
+                    onClick={() => navigate('/quote-request')}
                 />
             </div>
         );
@@ -304,7 +299,14 @@ export default function GetBasket() {
             
             <div className="basket-container">
                 {/* Empty basket state */}
-                {products.length === 0 ? (
+                {isError ? (
+                    <div className="basket-empty-container">
+                        <i className="pi pi-exclamation-triangle basket-empty-icon"></i>
+                        <h2 className="basket-empty-title">לא הצלחנו לטעון את הסל</h2>
+                        <p className="basket-empty-text">בדוק את החיבור ונסה שוב.</p>
+                        <Button label="נסה שוב" icon="pi pi-refresh" className="basket-empty-button" onClick={refetch} />
+                    </div>
+                ) : products.length === 0 ? (
                     <div className="basket-empty-container">
                         <i className="pi pi-shopping-cart basket-empty-icon"></i>
                         <h2 className="basket-empty-title">הסל שלך ריק</h2>
