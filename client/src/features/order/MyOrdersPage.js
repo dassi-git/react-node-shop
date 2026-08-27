@@ -3,7 +3,7 @@ import { Card } from 'primereact/card'
 import { Button } from 'primereact/button'
 import { Tag } from 'primereact/tag'
 import { Toast } from 'primereact/toast'
-import { useGetMyOrdersQuery, useAcceptQuoteMutation, useRejectQuoteMutation, useCreateStripeCheckoutMutation, useCreatePaypalOrderMutation } from './orderSlice'
+import { useGetMyOrdersQuery, useAcceptQuoteMutation, useRejectQuoteMutation, useCreateManualPaymentMutation } from './orderSlice'
 
 const statusLabels = {
     draft: 'טיוטה',
@@ -25,8 +25,7 @@ const MyOrdersPage = () => {
     const { data: orders = [], isLoading, refetch } = useGetMyOrdersQuery()
     const [acceptQuote, { isLoading: isAccepting }] = useAcceptQuoteMutation()
     const [rejectQuote, { isLoading: isRejecting }] = useRejectQuoteMutation()
-    const [createStripeCheckout, { isLoading: isStripePaying }] = useCreateStripeCheckoutMutation()
-    const [createPaypalOrder, { isLoading: isPaypalPaying }] = useCreatePaypalOrderMutation()
+    const [createManualPayment, { isLoading: isManualPaying }] = useCreateManualPaymentMutation()
     const toast = React.useRef(null)
 
     const handleAcceptQuote = async (quoteId) => {
@@ -69,17 +68,21 @@ const MyOrdersPage = () => {
         }
     }
 
-    const handlePayOrder = async (order, provider) => {
+    const handleManualPayment = async (order, paymentMethod) => {
         try {
-            const result = provider === 'stripe'
-                ? await createStripeCheckout(order._id).unwrap()
-                : await createPaypalOrder(order._id).unwrap()
-            if (result.url) window.location.assign(result.url)
+            await createManualPayment({ orderId: order._id, paymentMethod }).unwrap()
+            toast.current?.show({
+                severity: 'success',
+                summary: 'הבקשה התקבלה',
+                detail: 'הבקשה תיבדק ותאושר ידנית על ידי מנהל',
+                life: 5000
+            })
+            refetch()
         } catch (error) {
             toast.current?.show({
                 severity: 'error',
                 summary: 'שגיאה',
-                detail: error?.data?.message || 'לא הצלחנו להתחיל את התשלום',
+                detail: error?.data?.message || 'לא הצלחנו לשלוח את בקשת התשלום',
                 life: 3000
             })
         }
@@ -145,19 +148,24 @@ const MyOrdersPage = () => {
 
                                             {order.status === 'quote_accepted' && (
                                                 <>
+                                                    <div style={{ flexBasis: '100%', background: '#fff8e1', border: '1px solid #f0c36d', borderRadius: 8, padding: 12 }} role="note">
+                                                        <strong>פתרון תשלום זמני</strong>
+                                                        <div>עד להגדרת סליקה עסקית, ניתן לבקש תשלום בהעברה בנקאית או במזומן. האישור מתבצע ידנית על ידי מנהל בלבד.</div>
+                                                    </div>
                                                     <Button
-                                                        label={isStripePaying ? 'מעביר ל־Stripe...' : 'תשלום בכרטיס'}
-                                                        icon="pi pi-credit-card"
-                                                        onClick={() => handlePayOrder(order, 'stripe')}
-                                                        disabled={isStripePaying || isPaypalPaying}
+                                                        label={isManualPaying ? 'שולח בקשה...' : 'בקשת תשלום בהעברה'}
+                                                        icon="pi pi-building"
+                                                        severity="warning"
+                                                        onClick={() => handleManualPayment(order, 'bank_transfer')}
+                                                        disabled={isManualPaying}
                                                     />
                                                     <Button
-                                                        label={isPaypalPaying ? 'מעביר ל־PayPal...' : 'תשלום ב־PayPal'}
-                                                        icon="pi pi-wallet"
-                                                        severity="secondary"
+                                                        label={isManualPaying ? 'שולח בקשה...' : 'בקשת תשלום במזומן'}
+                                                        icon="pi pi-money-bill"
+                                                        severity="warning"
                                                         className="p-button-outlined"
-                                                        onClick={() => handlePayOrder(order, 'paypal')}
-                                                        disabled={isStripePaying || isPaypalPaying}
+                                                        onClick={() => handleManualPayment(order, 'cash')}
+                                                        disabled={isManualPaying}
                                                     />
                                                 </>
                                             )}

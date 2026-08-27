@@ -130,6 +130,67 @@ test('regular users cannot read or update another user', async () => {
     assert.equal(unchanged.address, 'Admin Street')
 })
 
+test('only admins can create, update, or delete products', async () => {
+    const productId = new mongoose.Types.ObjectId().toString()
+    const operations = [
+        { method: 'POST', path: '/api/product/', body: { name: 'Unauthorized Product', price: 10 } },
+        { method: 'PUT', path: '/api/product/', body: { _id: productId, name: 'Unauthorized Update' } },
+        { method: 'DELETE', path: `/api/product/${productId}` }
+    ]
+
+    for (const operation of operations) {
+        const anonymous = await request(operation.path, {
+            method: operation.method,
+            headers: operation.body ? { 'content-type': 'application/json' } : undefined,
+            body: operation.body ? JSON.stringify(operation.body) : undefined
+        })
+        assert.equal(anonymous.response.status, 401)
+
+        const regular = await request(operation.path, {
+            method: operation.method,
+            headers: { Authorization: `Bearer ${userToken}`, 'content-type': 'application/json' },
+            body: operation.body ? JSON.stringify(operation.body) : undefined
+        })
+        assert.equal(regular.response.status, 403)
+    }
+})
+
+test('all admin endpoints reject anonymous and regular users', async () => {
+    const id = new mongoose.Types.ObjectId().toString()
+    const operations = [
+        { method: 'GET', path: '/api/user/' },
+        { method: 'DELETE', path: `/api/user/${id}` },
+        { method: 'GET', path: '/api/order/admin' },
+        { method: 'PUT', path: `/api/order/${id}/status`, body: { status: 'confirmed' } },
+        { method: 'POST', path: '/api/quote/', body: { orderId: id, quotePrice: 100 } },
+        { method: 'GET', path: '/api/fruit-season/admin' },
+        { method: 'POST', path: '/api/fruit-season/', body: { fruitKey: 'apple' } },
+        { method: 'PUT', path: `/api/fruit-season/${id}`, body: { fruitKey: 'apple' } },
+        { method: 'DELETE', path: `/api/fruit-season/${id}` },
+        { method: 'POST', path: '/api/bundle/', body: { name: 'Unauthorized Bundle' } },
+        { method: 'DELETE', path: `/api/bundle/${id}` },
+        { method: 'PUT', path: '/api/product/', body: { _id: id, name: 'Unauthorized Product Update' } },
+        { method: 'POST', path: '/api/product/', body: { name: 'Unauthorized Product', price: 10 } },
+        { method: 'PUT', path: `/api/payment/${id}/confirm` }
+    ]
+
+    for (const operation of operations) {
+        const requestOptions = {
+            method: operation.method,
+            headers: operation.body ? { 'content-type': 'application/json' } : undefined,
+            body: operation.body ? JSON.stringify(operation.body) : undefined
+        }
+        const anonymous = await request(operation.path, requestOptions)
+        assert.equal(anonymous.response.status, 401, `${operation.method} ${operation.path} should require authentication`)
+
+        const regular = await request(operation.path, {
+            ...requestOptions,
+            headers: { ...(requestOptions.headers || {}), Authorization: `Bearer ${userToken}` }
+        })
+        assert.equal(regular.response.status, 403, `${operation.method} ${operation.path} should require admin access`)
+    }
+})
+
 test('registration rejects invalid email and short password before database writes', async () => {
     const invalidEmailResponse = controllerResponse()
     await register({ body: {

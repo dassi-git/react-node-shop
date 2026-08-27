@@ -148,37 +148,37 @@ const QuoteRequestPage = () => {
 
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
                         <div>
-                            <label>שם ההזמנה</label>
-                            <InputText value={form.productName} onChange={(e) => handleChange('productName', e.target.value)} style={{ width: '100%' }} />
+                            <label htmlFor="quote-product-name">שם ההזמנה</label>
+                            <InputText id="quote-product-name" value={form.productName} onChange={(e) => handleChange('productName', e.target.value)} style={{ width: '100%' }} />
                         </div>
                         <div>
-                            <label>כמות</label>
-                            <InputNumber value={form.quantity} onValueChange={(e) => handleChange('quantity', e.value)} style={{ width: '100%' }} />
+                            <label htmlFor="quote-quantity">כמות</label>
+                            <InputNumber inputId="quote-quantity" value={form.quantity} onValueChange={(e) => handleChange('quantity', e.value)} style={{ width: '100%' }} />
                         </div>
                         <div>
-                            <label>מחיר מוצע ראשוני</label>
-                            <InputNumber value={form.unitPrice} onValueChange={(e) => handleChange('unitPrice', e.value)} mode="currency" currency="ILS" locale="he-IL" style={{ width: '100%' }} />
+                            <label htmlFor="quote-unit-price">מחיר מוצע ראשוני</label>
+                            <InputNumber inputId="quote-unit-price" value={form.unitPrice} onValueChange={(e) => handleChange('unitPrice', e.value)} mode="currency" currency="ILS" locale="he-IL" style={{ width: '100%' }} />
                         </div>
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
                         <div>
-                            <label>עיר</label>
-                            <InputText value={form.city} onChange={(e) => handleChange('city', e.target.value)} style={{ width: '100%' }} />
+                            <label htmlFor="quote-city">עיר</label>
+                            <InputText id="quote-city" value={form.city} onChange={(e) => handleChange('city', e.target.value)} style={{ width: '100%' }} />
                         </div>
                         <div>
-                            <label>רחוב וכתובת</label>
-                            <InputText value={form.street} onChange={(e) => handleChange('street', e.target.value)} style={{ width: '100%' }} />
+                            <label htmlFor="quote-street">רחוב וכתובת</label>
+                            <InputText id="quote-street" value={form.street} onChange={(e) => handleChange('street', e.target.value)} style={{ width: '100%' }} />
                         </div>
                         <div>
-                            <label>תאריך משלוח</label>
-                            <Calendar value={form.deliveryDate} onChange={(e) => handleChange('deliveryDate', e.value)} dateFormat="dd/mm/yy" showIcon style={{ width: '100%' }} />
+                            <label htmlFor="quote-delivery-date">תאריך משלוח</label>
+                            <Calendar inputId="quote-delivery-date" value={form.deliveryDate} onChange={(e) => handleChange('deliveryDate', e.value)} dateFormat="dd/mm/yy" showIcon style={{ width: '100%' }} />
                         </div>
                     </div>
 
                     <div>
-                        <label>הערות</label>
-                        <textarea value={form.notes} onChange={(e) => handleChange('notes', e.target.value)} rows={5} style={{ width: '100%', resize: 'vertical' }} />
+                        <label htmlFor="quote-notes">הערות</label>
+                        <textarea id="quote-notes" value={form.notes} onChange={(e) => handleChange('notes', e.target.value)} rows={5} style={{ width: '100%', resize: 'vertical' }} />
                     </div>
 
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>

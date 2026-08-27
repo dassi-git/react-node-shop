@@ -89,6 +89,8 @@ test('order creation uses server pricing, reserves stock, and enforces ownership
 
     assert.equal(created.response.status, 201)
     assert.equal(created.body.order.status, 'quote_requested')
+    assert.deepEqual(created.body.order.statusHistory.map((entry) => entry.status), ['quote_requested'])
+    assert.equal(created.body.order.statusHistory[0].changedBy.toString(), user._id.toString())
     assert.equal(created.body.order.subtotal, 80)
     assert.equal(created.body.order.deliveryFee, 0)
     assert.equal(created.body.order.totalPrice, 80)
@@ -253,6 +255,8 @@ test('order status updates require admin access, valid transitions, and confirme
         body: JSON.stringify({ status: 'quote_sent' })
     })
     assert.equal(quoteSent.response.status, 200)
+    assert.deepEqual(quoteSent.body.order.statusHistory.map((entry) => entry.status), ['quote_requested', 'quote_sent'])
+    assert.equal(quoteSent.body.order.statusHistory[1].changedBy.toString(), admin._id.toString())
 
     const quote = await Quote.create({
         orderId: order._id,

@@ -4,6 +4,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server",
+    "start:production": "node server",
     "dev": "nodemon server",
     "test": "node --test --test-concurrency=1"
   },

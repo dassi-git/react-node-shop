@@ -125,6 +125,7 @@ const createPayment = async (req, res) => {
         })
 
         order.status = 'payment_pending'
+        order.statusHistory.push({ status: 'payment_pending', changedBy: req.user._id, changedAt: new Date() })
         await order.save()
 
         return res.status(201).json({ message: 'Payment started', payment })
@@ -134,6 +135,43 @@ const createPayment = async (req, res) => {
         }
         console.error('Error creating payment:', error)
         return res.status(500).json({ message: 'Server error creating payment' })
+    }
+}
+
+const createManualPayment = async (req, res) => {
+    try {
+        const { orderId, paymentMethod } = req.body
+        if (!['bank_transfer', 'cash'].includes(paymentMethod)) {
+            return res.status(400).json({ message: 'Temporary payment method must be bank_transfer or cash.' })
+        }
+
+        const { order, amount, error } = await getAuthorizedOrder(orderId, req.user)
+        if (error) return res.status(error.status).json({ message: error.message })
+
+        const payment = await Payment.create({
+            orderId: order._id,
+            userId: order.userId,
+            amount,
+            paymentMethod,
+            provider: 'internal',
+            status: 'pending',
+            notes: 'Temporary manual payment. Requires administrator confirmation.'
+        })
+
+        order.status = 'payment_pending'
+        order.statusHistory.push({ status: 'payment_pending', changedBy: req.user._id, changedAt: new Date() })
+        await order.save()
+
+        return res.status(201).json({
+            message: 'Temporary payment request received. It will be confirmed manually by an administrator.',
+            payment
+        })
+    } catch (error) {
+        if (error?.code === 11000) {
+            return res.status(409).json({ message: 'A payment already exists for this order.' })
+        }
+        console.error('Error creating temporary manual payment:', error)
+        return res.status(500).json({ message: 'Server error creating temporary payment request' })
     }
 }
 
@@ -167,6 +205,7 @@ const confirmPayment = async (req, res) => {
 
         payment.status = 'paid'
         order.status = 'paid'
+        order.statusHistory.push({ status: 'paid', changedBy: req.user._id, changedAt: new Date() })
         order.finalPrice = payment.amount
 
         await payment.save()
@@ -306,6 +345,7 @@ const getPaymentsForOrder = async (req, res) => {
 
 module.exports = {
     createPayment,
+    createManualPayment,
     confirmPayment,
     stripeWebhook,
     createStripeCheckout,

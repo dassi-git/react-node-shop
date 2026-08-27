@@ -86,6 +86,15 @@ const orderSlice = apiSlice.injectEndpoints({
             invalidatesTags: ['Order', 'Payment']
         }),
 
+        createManualPayment: build.mutation({
+            query: (paymentData) => ({
+                url: '/payment/manual',
+                method: 'POST',
+                body: paymentData
+            }),
+            invalidatesTags: ['Order', 'Payment']
+        }),
+
         createStripeCheckout: build.mutation({
             query: (orderId) => ({
                 url: '/payment/stripe/checkout',
@@ -139,6 +148,7 @@ export const {
     useAcceptQuoteMutation,
     useRejectQuoteMutation,
     useCreatePaymentMutation,
+    useCreateManualPaymentMutation,
     useConfirmPaymentMutation,
     useCreateStripeCheckoutMutation,
     useCompleteStripeCheckoutMutation,

@@ -131,6 +131,7 @@ const createOrder = async (req, res) => {
                     userId: req.user._id,
                     orderNumber: generateOrderNumber(),
                     status: 'quote_requested',
+                    statusHistory: [{ status: 'quote_requested', changedBy: req.user._id, changedAt: new Date() }],
                     subtotal,
                     deliveryFee: fee,
                     totalPrice,
@@ -257,7 +258,11 @@ const updateOrderStatus = async (req, res) => {
             if (!paidPayment) return res.status(400).json({ message: 'A confirmed payment is required before this status.' })
         }
 
+        if (!Array.isArray(order.statusHistory) || order.statusHistory.length === 0) {
+            order.statusHistory = [{ status: order.status, changedBy: null, changedAt: order.createdAt || new Date() }]
+        }
         order.status = status
+        order.statusHistory.push({ status, changedBy: req.user._id, changedAt: new Date() })
         await order.save()
 
         return res.json({ message: 'Order status updated', order })

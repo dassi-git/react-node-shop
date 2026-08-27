@@ -1,8 +1,9 @@
-require('dotenv').config()
+const path = require('path')
+const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env'
+require('dotenv').config({ path: path.resolve(__dirname, envFile) })
 const express = require('express')
 const cors = require('cors')
 const helmet = require('helmet')
-const path = require('path')
 const corsOption = require('./config/corsOptions')
 const connectDB = require('./config/dbconn')
 const logger = require('./config/logger')

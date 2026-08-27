@@ -61,6 +61,7 @@ const createQuote = async (req, res) => {
                 order.deliveryFee = Number(deliveryFee || order.deliveryFee || 0)
                 order.finalPrice = Number(quotePrice || 0) + Number(deliveryFee || 0)
                 order.status = 'quote_sent'
+                order.statusHistory.push({ status: 'quote_sent', changedBy: req.user._id, changedAt: new Date() })
                 await order.save({ session })
             })
         } finally {
@@ -120,6 +121,7 @@ const acceptQuote = async (req, res) => {
             await session.withTransaction(async () => {
                 quote.status = 'accepted'
                 order.status = 'quote_accepted'
+                order.statusHistory.push({ status: 'quote_accepted', changedBy: req.user._id, changedAt: new Date() })
                 await quote.save({ session })
                 await order.save({ session })
             })
@@ -160,6 +162,7 @@ const rejectQuote = async (req, res) => {
             await session.withTransaction(async () => {
                 quote.status = 'rejected'
                 order.status = 'quote_rejected'
+                order.statusHistory.push({ status: 'quote_rejected', changedBy: req.user._id, changedAt: new Date() })
                 await quote.save({ session })
                 await order.save({ session })
             })

@@ -3,9 +3,13 @@ import { Navigate, useLocation } from 'react-router-dom';
 import useAuth from '../../features/user/useAuth';
 
 const RequireAdmin = ({ children }) => {
-    const { isUserLoggedIn } = useSelector((state) => state.auth);
+    const { isUserLoggedIn, authInitialized } = useSelector((state) => state.auth);
     const location = useLocation();
     const objToken = useAuth();
+
+    if (!authInitialized) {
+        return <p aria-live="polite">טוען חיבור...</p>;
+    }
 
     // אם המשתמש לא מחובר בכלל - העבר להתחברות
     if (!isUserLoggedIn || !objToken) {

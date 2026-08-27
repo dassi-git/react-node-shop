@@ -70,8 +70,8 @@ const AdminQuotePage = () => {
                 <div style={{ display: 'grid', gap: 20 }}>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
                         <div>
-                            <label>בחר הזמנה</label>
-                            <select value={quoteForm.orderId} onChange={(e) => setQuoteForm((prev) => ({ ...prev, orderId: e.target.value }))} style={{ width: '100%', padding: 10 }}>
+                            <label htmlFor="quote-order">בחר הזמנה</label>
+                            <select id="quote-order" value={quoteForm.orderId} onChange={(e) => setQuoteForm((prev) => ({ ...prev, orderId: e.target.value }))} style={{ width: '100%', padding: 10 }}>
                                 <option value="">בחר...</option>
                                 {orders.map((order) => (
                                     <option key={order._id} value={order._id}>
@@ -81,22 +81,22 @@ const AdminQuotePage = () => {
                             </select>
                         </div>
                         <div>
-                            <label>מחיר מוצע</label>
-                            <InputNumber value={quoteForm.quotePrice} onValueChange={(e) => setQuoteForm((prev) => ({ ...prev, quotePrice: e.value || 0 }))} mode="currency" currency="ILS" locale="he-IL" style={{ width: '100%' }} />
+                            <label htmlFor="quote-price">מחיר מוצע</label>
+                            <InputNumber inputId="quote-price" value={quoteForm.quotePrice} onValueChange={(e) => setQuoteForm((prev) => ({ ...prev, quotePrice: e.value || 0 }))} mode="currency" currency="ILS" locale="he-IL" style={{ width: '100%' }} />
                         </div>
                         <div>
-                            <label>דמי משלוח</label>
-                            <InputNumber value={quoteForm.deliveryFee} onValueChange={(e) => setQuoteForm((prev) => ({ ...prev, deliveryFee: e.value || 0 }))} mode="currency" currency="ILS" locale="he-IL" style={{ width: '100%' }} />
+                            <label htmlFor="quote-delivery-fee">דמי משלוח</label>
+                            <InputNumber inputId="quote-delivery-fee" value={quoteForm.deliveryFee} onValueChange={(e) => setQuoteForm((prev) => ({ ...prev, deliveryFee: e.value || 0 }))} mode="currency" currency="ILS" locale="he-IL" style={{ width: '100%' }} />
                         </div>
                         <div>
-                            <label>מקדמה</label>
-                            <InputNumber value={quoteForm.depositAmount} onValueChange={(e) => setQuoteForm((prev) => ({ ...prev, depositAmount: e.value || 0 }))} mode="currency" currency="ILS" locale="he-IL" style={{ width: '100%' }} />
+                            <label htmlFor="quote-deposit">מקדמה</label>
+                            <InputNumber inputId="quote-deposit" value={quoteForm.depositAmount} onValueChange={(e) => setQuoteForm((prev) => ({ ...prev, depositAmount: e.value || 0 }))} mode="currency" currency="ILS" locale="he-IL" style={{ width: '100%' }} />
                         </div>
                     </div>
 
                     <div>
-                        <label>הערות</label>
-                        <InputText value={quoteForm.notes} onChange={(e) => setQuoteForm((prev) => ({ ...prev, notes: e.target.value }))} style={{ width: '100%' }} />
+                        <label htmlFor="quote-notes">הערות</label>
+                        <InputText id="quote-notes" value={quoteForm.notes} onChange={(e) => setQuoteForm((prev) => ({ ...prev, notes: e.target.value }))} style={{ width: '100%' }} />
                     </div>
 
                     <div style={{ display: 'flex', justifyContent: 'flex-end' }}>

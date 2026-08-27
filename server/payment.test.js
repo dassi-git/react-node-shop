@@ -14,6 +14,7 @@ const User = require('./models/User')
 const Order = require('./models/Order')
 const Quote = require('./models/Quote')
 const Payment = require('./models/Payment')
+const { paymentLimiter } = require('./middleware/rateLimiter')
 
 let mongoServer
 let server
@@ -133,6 +134,31 @@ test('internal payment can be started, authorized, and confirmed once', async ()
     assert.equal(await Payment.countDocuments({ orderId: order._id }), 1)
 })
 
+test('temporary manual payment accepts only bank transfer or cash and stays pending', async () => {
+    const order = await createOrderWithAcceptedQuote()
+    const invalid = await request('/api/payment/manual', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${userToken}`, 'content-type': 'application/json' },
+        body: JSON.stringify({ orderId: order._id.toString(), paymentMethod: 'card' })
+    })
+
+    assert.equal(invalid.response.status, 400)
+    assert.equal(await Payment.countDocuments({ orderId: order._id }), 0)
+
+    const manual = await request('/api/payment/manual', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${userToken}`, 'content-type': 'application/json' },
+        body: JSON.stringify({ orderId: order._id.toString(), paymentMethod: 'bank_transfer' })
+    })
+
+    assert.equal(manual.response.status, 201)
+    assert.equal(manual.body.payment.paymentMethod, 'bank_transfer')
+    assert.equal(manual.body.payment.provider, 'internal')
+    assert.equal(manual.body.payment.status, 'pending')
+    assert.match(manual.body.message, /Temporary payment request received/)
+    assert.equal((await Order.findById(order._id)).status, 'payment_pending')
+})
+
 test('external payment endpoints report missing configuration without creating payments', async () => {
     const stripeOrder = await createOrderWithAcceptedQuote()
     const paypalOrder = await createOrderWithAcceptedQuote()
@@ -181,6 +207,48 @@ test('concurrent internal payment requests create only one active payment', asyn
 
     assert.deepEqual(results.map((result) => result.response.status).sort((a, b) => a - b), [201, 409])
     assert.equal(await Payment.countDocuments({ orderId: order._id, status: { $in: ['pending', 'paid'] } }), 1)
+})
+
+test('payment cannot be started before an accepted quote', async () => {
+    const order = await Order.create({
+        userId: user._id,
+        orderNumber: `PAYMENT-PREQUOTE-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        status: 'quote_sent',
+        totalPrice: 200,
+        finalPrice: 200,
+        deliveryAddress: { city: 'Test City', street: 'Test Street' },
+        items: [{ productName: 'Payment Test Product', quantity: 1, unitPrice: 200, totalPrice: 200 }]
+    })
+    const quote = await Quote.create({
+        orderId: order._id,
+        adminId: admin._id,
+        quotePrice: 200,
+        depositAmount: 75,
+        validUntil: new Date(Date.now() + 86400000),
+        status: 'sent'
+    })
+    order.quote = quote._id
+    await order.save()
+
+    paymentLimiter.resetKey('127.0.0.1')
+    paymentLimiter.resetKey('::ffff:127.0.0.1')
+    const headers = { Authorization: `Bearer ${userToken}`, 'content-type': 'application/json' }
+    const manual = await request('/api/payment/manual', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ orderId: order._id.toString(), paymentMethod: 'bank_transfer' })
+    })
+    const regular = await request('/api/payment', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ orderId: order._id.toString(), paymentMethod: 'card' })
+    })
+
+    assert.equal(manual.response.status, 400)
+    assert.equal(regular.response.status, 400)
+    assert.match(manual.body.message, /quote must be accepted/i)
+    assert.equal(await Payment.countDocuments({ orderId: order._id }), 0)
+    assert.equal((await Order.findById(order._id)).status, 'quote_sent')
 })
 
 test('signed Stripe webhook is idempotent when delivered twice', async () => {

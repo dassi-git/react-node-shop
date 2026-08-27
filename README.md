@@ -86,6 +86,14 @@ REACT_APP_API_URL=http://localhost:8888
 REACT_APP_API_BASE_URL=http://localhost:8888/api/
 ```
 
+For deployment, copy `server/.env.production.example` to `server/.env.production`
+and `client/.env.production.example` to `client/.env.production`, then replace
+every placeholder with production values from the deployment secret store. Set
+`NODE_ENV=production` before running `npm run start:production` in `server`.
+Production loads only `.env.production`, requires a managed MongoDB URI, and
+never falls back to the in-memory database. The current customer payment flow
+is manual; Stripe and PayPal configuration remains available for a future rollout.
+
 For Stripe test payments, also configure `STRIPE_SECRET_KEY` and
 `STRIPE_WEBHOOK_SECRET` in `server/.env`. Send `checkout.session.completed`
 events to `POST /api/payment/stripe/webhook`; the server verifies the Stripe

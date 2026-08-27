@@ -6,6 +6,8 @@ const paymentController = require('../controllers/paymentController')
 const { paymentLimiter } = require('../middleware/rateLimiter')
 
 router.post('/', [paymentLimiter, verifyJWT], paymentController.createPayment)
+// Temporary fallback until a business payment provider is configured.
+router.post('/manual', [paymentLimiter, verifyJWT], paymentController.createManualPayment)
 router.post('/stripe/checkout', [paymentLimiter, verifyJWT], paymentController.createStripeCheckout)
 router.post('/stripe/complete/:sessionId', [paymentLimiter, verifyJWT], paymentController.completeStripeCheckout)
 router.post('/paypal/order', [paymentLimiter, verifyJWT], paymentController.createPaypalOrder)

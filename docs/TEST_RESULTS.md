@@ -62,6 +62,23 @@
 | MongoDB index synchronization | `FIXED` | `Payment` partial index עם `$ne` נדחה על ידי MongoDB; הוחלף ל־`$gt: ''`, וכל המודלים נטענים ומריצים `createIndexes` לאחר startup. בדיקת האינדקס הציגה בפועל `provider_1_providerPaymentId_1` ייחודי |
 | Order regression after index synchronization | `PASS` | `node --test order.test.js`: 6 tests עברו לאחר תיקון fixture היסטוריית המוצר לשימוש ב־Basket ועדכון ציפיית מספר ההזמנות |
 | Full server regression after index synchronization | `PASS` | `npm test` מתוך `server`: 47 tests עברו עם `--test-concurrency=1` |
+| Order status history audit trail | `PASS` | `node --test --test-name-pattern="order status updates" order.test.js`: בדיקה אחת עברה; שינויי סטטוס נשמרים עם רצף סטטוסים, משתמש מבצע ו־timestamp, ומוצגים בפרטי ההזמנה למנהל |
+| Full server regression after status history | `PASS` | `npm test` מתוך `server`: 47 tests עברו עם `--test-concurrency=1`; `CI=true npm --prefix client run build` עבר עם `Compiled successfully` |
+| Quote request form accessibility labels | `PASS` | `CI=true npm --prefix client test -- --watchAll=false --runInBand`: 2 suites ו־3 tests עברו; כל שדות טופס בקשת הצעת המחיר מקושרים ל־label, ו־`CI=true npm --prefix client run build` עבר |
+| Admin quote form accessibility labels | `PASS` | `CI=true npm --prefix client test -- --watchAll=false --runInBand`: 2 suites ו־3 tests עברו; כל שדות טופס מנהל הצעות המחיר מקושרים ל־label, ו־`CI=true npm --prefix client run build` עבר |
+| Customization editor accessibility labels | `PASS` | `CI=true npm --prefix client test -- --watchAll=false --runInBand`: 2 suites ו־3 tests עברו; פקדי radio/checkbox ושדות המספר בעורך ההתאמות מקושרים ל־label, ו־`CI=true npm --prefix client run build` עבר |
+| Customization editor control names | `PASS` | `CI=true npm --prefix client test -- --watchAll=false --runInBand`: 2 suites ו־3 tests עברו; שדות ההתאמות הדינמיים כוללים שמות נגישים, ו־`CI=true npm --prefix client run build` עבר |
+| Temporary manual payment is the active customer flow | `PASS` | `node --test payment.test.js`: 5 tests עברו; תשלום ידני בהעברה או במזומן נוצר כ־`pending`, ממתין לאישור מנהל, ותשלומי Stripe/PayPal נשארו זמינים בקוד; `CI=true npm --prefix client run build` עבר עם `Compiled successfully` |
+| Payment blocked before quote acceptance | `PASS` | `node --test --test-concurrency=1 payment.test.js`: 6 tests עברו; גם `/api/payment/manual` וגם `/api/payment` מחזירים `400` להזמנה עם הצעה בסטטוס `sent`, ללא יצירת תשלום וללא שינוי סטטוס ההזמנה |
+| Full server regression after payment prerequisite coverage | `PASS` | `npm test -- --test-concurrency=1` מתוך `server`: 49 tests עברו |
+| Production environment separation | `PASS` | `node --check server/server.js` ו־`node --check server/config/dbconn.js` עברו; נוספו `.env.production.example` נפרדים לשרת וללקוח, ו־production טוען רק `.env.production` |
+| Production database does not use memory fallback | `PASS` | `NODE_ENV=production` ללא `DATABASE_URI` או `MONGO_URI` והרצת `connectDB()` החזירה `DATABASE_URI or MONGO_URI must be configured in production` לפני ניסיון fallback |
+| Full server regression after production environment separation | `PASS` | `NODE_ENV=development npm test -- --test-concurrency=1` מתוך `server`: 49 tests עברו; `basket.test.js` עבר גם בהרצה מבודדת עם 2 tests |
+| Product CRUD authorization coverage | `PASS` | `NODE_ENV=development node --test --test-concurrency=1 authorization.test.js`: 11 tests עברו; משתמש אנונימי קיבל `401` ומשתמש רגיל `403` ביצירה, עדכון ומחיקת מוצר |
+| Full server regression after product authorization coverage | `PASS` | `NODE_ENV=development npm test -- --test-concurrency=1` מתוך `server`: 50 tests עברו |
+| Admin route guard authorization coverage | `PASS` | `CI=true npm --prefix client test -- --watchAll=false --runInBand`: 3 suites ו־6 tests עברו; `RequireAdmin` ממתין ל־auth bootstrap, חוסם משתמש רגיל ומציג תוכן למנהל; `CI=true npm --prefix client run build` עבר |
+| All admin endpoint authorization coverage | `PASS` | `NODE_ENV=development node --test --test-concurrency=1 authorization.test.js`: 12 tests עברו; נקודות ה־admin של users, orders, quotes, seasons, bundles, products ו־payments החזירו `401` ללא token ו־`403` למשתמש רגיל |
+| Full server regression after admin endpoint authorization coverage | `PASS` | `NODE_ENV=development npm test -- --test-concurrency=1` מתוך `server`: 51 tests עברו |
 
 ## הרצה 2026-08-26
 

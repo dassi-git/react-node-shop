@@ -38,6 +38,22 @@ const orderItemSchema = new mongoose.Schema({
     }
 }, { _id: true })
 
+const statusHistorySchema = new mongoose.Schema({
+    status: {
+        type: String,
+        required: true
+    },
+    changedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        default: null
+    },
+    changedAt: {
+        type: Date,
+        default: Date.now
+    }
+}, { _id: false })
+
 const orderSchema = new mongoose.Schema({
     userId: {
         type: mongoose.Schema.Types.ObjectId,
@@ -68,6 +84,10 @@ const orderSchema = new mongoose.Schema({
             'cancelled'
         ],
         default: 'quote_requested'
+    },
+    statusHistory: {
+        type: [statusHistorySchema],
+        default: []
     },
     subtotal: {
         type: Number,
