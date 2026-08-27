@@ -150,12 +150,20 @@
 }
 
 .similar-product-card {
+  width: 100%;
+  font: inherit;
+  text-align: right;
   background: #f8fafc;
   border: 1px solid #e2e8f0;
   border-radius: 16px;
   padding: 1rem;
   cursor: pointer;
   transition: 0.2s ease;
+}
+
+.similar-product-card:focus-visible {
+  outline: 3px solid #2563eb;
+  outline-offset: 3px;
 }
 
 .similar-product-card:hover {

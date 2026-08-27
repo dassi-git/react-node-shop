@@ -126,7 +126,7 @@ const ProductDetail = () => {
             <div className="product-gallery-thumbs">
               {productImages.map((image, index) => (
                 <button type="button" className={`thumb ${selectedImage === index ? 'active' : ''}`} key={image} onClick={() => setSelectedImage(index)} aria-label={`תמונה ${index + 1}`}>
-                  <img src={`${imageBaseUrl}${image.startsWith('/') ? '' : '/'}${image}`} alt="" />
+                  <img loading="lazy" src={`${imageBaseUrl}${image.startsWith('/') ? '' : '/'}${image}`} alt="" />
                 </button>
               ))}
             </div>
@@ -251,11 +251,11 @@ const ProductDetail = () => {
           {similarProducts.length > 0 ? (
             <div className="similar-products-row">
               {similarProducts.map((item) => (
-                <div key={item._id} className="similar-product-card" onClick={() => navigate(`/product/${item._id}`)}>
-                  <img src={item.image ? `${process.env.REACT_APP_API_URL || 'http://localhost:8888'}${item.image.startsWith('/') ? '' : '/'}${item.image}` : '/logo.png'} alt={item.name} />
+                <button type="button" key={item._id} className="similar-product-card" onClick={() => navigate(`/product/${item._id}`)}>
+                  <img loading="lazy" src={item.image ? `${process.env.REACT_APP_API_URL || 'http://localhost:8888'}${item.image.startsWith('/') ? '' : '/'}${item.image}` : '/logo.png'} alt={item.name} />
                   <div className="similar-product-name"><strong>{item.name}</strong></div>
                   <div className="similar-product-price">₪{item.price}</div>
-                </div>
+                </button>
               ))}
             </div>
           ) : (

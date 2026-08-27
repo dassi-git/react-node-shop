@@ -11,6 +11,9 @@ process.env.ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET || 'fruit-seas
 const { app } = require('./server')
 const User = require('./models/User')
 const FruitSeason = require('./models/FruitSeason')
+const Product = require('./models/Product')
+const Basket = require('./models/Basket')
+const Order = require('./models/Order')
 
 let mongoServer
 let server
@@ -113,4 +116,77 @@ test('season update and delete reject invalid IDs before database access', async
     const remove = await request('/api/fruit-season/not-an-object-id', jsonOptions('DELETE', {}))
     assert.equal(remove.response.status, 400)
     assert.deepEqual(remove.body, { message: 'Invalid season ID.' })
+})
+
+test('product fruit seasons flow through premium pricing, unavailable validation, and order snapshots', async () => {
+    const product = await Product.create({
+        name: 'Seasonal Mango Basket',
+        price: 100,
+        quantity: 3,
+        productExist: 'INSTOCK',
+        inventoryStatus: 'INSTOCK',
+        customizationOptions: [{
+            name: 'fruits',
+            selectionType: 'single',
+            required: true,
+            values: [{ label: 'מנגו', value: 'mango', fruitKey: 'mango' }]
+        }]
+    })
+
+    const premium = await request('/api/fruit-season', jsonOptions('POST', {
+        fruitKey: 'mango',
+        displayName: 'מנגו',
+        validFrom: '2026-10-01T00:00:00.000Z',
+        validUntil: '2026-10-31T23:59:59.999Z',
+        status: 'premium',
+        priceAdjustment: 15
+    }))
+    assert.equal(premium.response.status, 201)
+
+    const user = await User.create({
+        name: 'Seasonal Customer',
+        userName: 'seasonal-customer',
+        address: 'Season Street',
+        phone: '0502222222',
+        email: 'seasonal-customer@example.com',
+        password: await bcrypt.hash('Test1234', 10)
+    })
+    const userToken = jwt.sign({ _id: user._id.toString(), role: user.role }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' })
+
+    const customerAdded = await request(`/api/basket/${product._id}`, jsonOptions('PUT', {
+        seasonalDate: '2026-10-15T12:00:00.000Z',
+        selectedOptions: { fruits: 'mango' }
+    }, userToken))
+    assert.equal(customerAdded.response.status, 200)
+    assert.equal(customerAdded.body.basket.Products[0].optionPriceAdjustment, 15)
+    assert.equal(customerAdded.body.basket.Products[0].seasonalSnapshot[0].status, 'premium')
+
+    const unavailable = await request('/api/fruit-season', jsonOptions('POST', {
+        fruitKey: 'mango',
+        displayName: 'מנגו',
+        validFrom: '2026-11-01T00:00:00.000Z',
+        validUntil: '2026-11-30T23:59:59.999Z',
+        status: 'unavailable'
+    }))
+    assert.equal(unavailable.response.status, 201)
+
+    const blocked = await request(`/api/basket/${product._id}`, jsonOptions('PUT', {
+        seasonalDate: '2026-11-15T12:00:00.000Z',
+        selectedOptions: { fruits: 'mango' }
+    }, userToken))
+    assert.equal(blocked.response.status, 400)
+
+    const order = await request('/api/order', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${userToken}`, 'content-type': 'application/json' },
+        body: JSON.stringify({
+            deliveryDate: '2026-10-15T12:00:00.000Z',
+            deliveryAddress: { city: 'Test City', street: 'Test Street' }
+        })
+    })
+    assert.equal(order.response.status, 201)
+    assert.equal(order.body.order.subtotal, 115)
+    assert.equal(order.body.order.items[0].seasonalSnapshot[0].status, 'premium')
+    assert.equal((await Basket.findOne({ userId: user._id })).Products.length, 0)
+    assert.equal((await Order.findById(order.body.order._id)).items[0].totalPrice, 115)
 })

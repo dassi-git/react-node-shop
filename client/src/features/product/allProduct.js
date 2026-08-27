@@ -52,6 +52,8 @@ const AllProduct = () => {
     const [minimumRating, setMinimumRating] = useState(0);
     const [stockFilter, setStockFilter] = useState('all');
     const [sortOption, setSortOption] = useState('rating');
+    const [currentPage, setCurrentPage] = useState(1);
+    const productsPerPage = 12;
 
     const categoryOptions = useMemo(() => {
         const unique = [...new Set(normalizedProducts.map((product) => product.category || 'General'))];
@@ -94,6 +96,12 @@ const AllProduct = () => {
         });
     }, [normalizedProducts, selectedCategory, searchTerm, activePriceMin, activePriceMax, minimumRating, stockFilter, sortOption]);
 
+    const pageCount = Math.max(1, Math.ceil(filteredProducts.length / productsPerPage));
+    const paginatedProducts = useMemo(() => {
+        const start = (currentPage - 1) * productsPerPage;
+        return filteredProducts.slice(start, start + productsPerPage);
+    }, [currentPage, filteredProducts]);
+
     useEffect(() => {
         if (normalizedProducts.length > 0) {
             setPriceRange((currentRange) => {
@@ -105,6 +113,14 @@ const AllProduct = () => {
             });
         }
     }, [maxProductPrice, normalizedProducts.length]);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [selectedCategory, searchTerm, activePriceMin, activePriceMax, minimumRating, stockFilter, sortOption]);
+
+    useEffect(() => {
+        if (currentPage > pageCount) setCurrentPage(pageCount);
+    }, [currentPage, pageCount]);
 
     const resetFilters = () => {
         setSelectedCategory('All');
@@ -190,7 +206,7 @@ const AllProduct = () => {
 
                 <div className="col-12">
                     <div className={classNames('product-list-item flex flex-column xl:flex-row xl:align-items-start p-4 gap-4 border-round-lg', { 'border-top-1 surface-border': index !== 0 })}>
-                        <img className="w-9 sm:w-16rem xl:w-10rem shadow-2 block xl:block mx-auto border-round" src={product.image ? `${process.env.REACT_APP_API_URL || 'http://localhost:8888'}${product.image.startsWith('/') ? '' : '/'}${product.image}` : '/logo.png'} alt={product.name} />
+                        <img loading="lazy" className="w-9 sm:w-16rem xl:w-10rem shadow-2 block xl:block mx-auto border-round" src={product.image ? `${process.env.REACT_APP_API_URL || 'http://localhost:8888'}${product.image.startsWith('/') ? '' : '/'}${product.image}` : '/logo.png'} alt={product.name} />
 
                         <div className="flex flex-column sm:flex-row justify-content-between align-items-center xl:align-items-start flex-1 gap-4">
                             <div className="flex flex-column align-items-center sm:align-items-start gap-3">
@@ -276,7 +292,7 @@ const AllProduct = () => {
                     </div>
 
                     <div className="product-card-image-wrap">
-                        <img className="product-card-image" src={product.image ? `${process.env.REACT_APP_API_URL || 'http://localhost:8888'}${product.image.startsWith('/') ? '' : '/'}${product.image}` : '/logo.png'} alt={product.name} />
+                        <img loading="lazy" className="product-card-image" src={product.image ? `${process.env.REACT_APP_API_URL || 'http://localhost:8888'}${product.image.startsWith('/') ? '' : '/'}${product.image}` : '/logo.png'} alt={product.name} />
                     </div>
 
                     <div className="product-card-body">
@@ -395,7 +411,7 @@ const AllProduct = () => {
                 </div>
                 <div className="advanced-filters" aria-label="סינון מתקדם">
                     <div className="advanced-filter-field price-filter">
-                        <label>טווח מחיר: ₪{activePriceMin} - ₪{activePriceMax}</label>
+                        <label htmlFor="price-range-filter">טווח מחיר: ₪{activePriceMin} - ₪{activePriceMax}</label>
                         <Slider value={[activePriceMin, activePriceMax]} onChange={(e) => setPriceRange(e.value)} range min={0} max={maxProductPrice} step={1} />
                     </div>
                     <div className="advanced-filter-field">
@@ -634,7 +650,14 @@ const AllProduct = () => {
                     </div>
                 </div>
 
-                <DataView value={filteredProducts} listTemplate={listTemplate} layout={layout} header={header()} />
+                <DataView value={paginatedProducts} listTemplate={listTemplate} layout={layout} header={header()} />
+                {pageCount > 1 && (
+                    <nav className="products-pagination" aria-label="ניווט בין עמודי מוצרים">
+                        <Button label="הקודם" icon="pi pi-chevron-right" className="p-button-outlined" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={currentPage === 1} />
+                        <span aria-live="polite">עמוד {currentPage} מתוך {pageCount}</span>
+                        <Button label="הבא" icon="pi pi-chevron-left" iconPos="right" className="p-button-outlined" onClick={() => setCurrentPage((page) => Math.min(pageCount, page + 1))} disabled={currentPage === pageCount} />
+                    </nav>
+                )}
             </div>
         </div>
     )

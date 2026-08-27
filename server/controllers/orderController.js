@@ -2,6 +2,7 @@ const Order = require('../models/Order')
 const Quote = require('../models/Quote')
 const Product = require('../models/Product')
 const Payment = require('../models/Payment')
+const Basket = require('../models/Basket')
 const mongoose = require('mongoose')
 const { resolveSeasonalSelections } = require('../services/fruitSeasonService')
 
@@ -46,14 +47,7 @@ const resolveSelectedOptions = (product, selectedOptions = {}) => {
 
 const createOrder = async (req, res) => {
     try {
-        const { items, deliveryDate, deliveryAddress, notes, deliveryFee } = req.body
-
-        if (!Array.isArray(items) || items.length === 0) {
-            return res.status(400).json({ message: 'At least one item is required.' })
-        }
-        if (items.length > 50 || items.some((item) => !item || typeof item !== 'object')) {
-            return res.status(400).json({ message: 'Order items are invalid.' })
-        }
+        const { deliveryDate, deliveryAddress, notes } = req.body
 
         const address = deliveryAddress || {}
         if (!address || typeof address !== 'object' || !String(address.city || '').trim() || !String(address.street || '').trim()) {
@@ -69,14 +63,20 @@ const createOrder = async (req, res) => {
             return res.status(400).json({ message: 'Order notes are too long.' })
         }
 
-        const normalizedItems = await Promise.all(items.map(async (item) => {
-            const quantity = Number(item.quantity || 1)
-            const isProductId = mongoose.isValidObjectId(item.productId)
-            const product = isProductId ? await Product.findById(item.productId).lean() : null
-            if (isProductId && !product) throw new Error('Product no longer exists.')
+        const basket = await Basket.findOne({ userId: req.user._id }).populate('Products.type').lean()
+        if (!basket || !Array.isArray(basket.Products) || basket.Products.length === 0) {
+            return res.status(400).json({ message: 'At least one item is required.' })
+        }
+        if (basket.Products.length > 50 || basket.Products.some((item) => !item?.type)) {
+            return res.status(400).json({ message: 'Order items are invalid.' })
+        }
+
+        const normalizedItems = await Promise.all(basket.Products.map(async (basketItem) => {
+            const product = basketItem.type
+            const quantity = Number(basketItem.quantity || 1)
             if (product && (product.inventoryStatus === 'OUTOFSTOCK' || product.productExist === 'OUTOFSTOCK')) throw new Error(`${product.name} is out of stock.`)
             if (product && quantity > product.quantity) throw new Error(`${product.name} does not have enough stock.`)
-            let selectedOptions = item.selectedOptions || {}
+            let selectedOptions = basketItem.selectedOptions || {}
             let optionAdjustment = 0
             if (product) {
                 const resolved = resolveSelectedOptions(product, selectedOptions)
@@ -86,7 +86,7 @@ const createOrder = async (req, res) => {
                 optionAdjustment += seasonal.adjustment
                 var seasonalSnapshot = seasonal.snapshots
             }
-            const unitPrice = product ? Number(product.price) + optionAdjustment : Number(item.unitPrice || 0)
+            const unitPrice = Number(product.price) + optionAdjustment
             if (!Number.isInteger(quantity) || quantity < 1 || quantity > 100) {
                 throw new Error('Quantity must be a whole number between 1 and 100.')
             }
@@ -96,22 +96,19 @@ const createOrder = async (req, res) => {
             const totalPrice = unitPrice * quantity
 
             return {
-                productId: item.productId,
-                productName: product?.name || item.productName || 'Custom fruit arrangement',
+                productId: product._id,
+                productName: product.name,
                 quantity,
                 selectedOptions,
                 seasonalSnapshot: seasonalSnapshot || [],
-                customNotes: item.customNotes || '',
+                customNotes: '',
                 unitPrice,
                 totalPrice
             }
         }))
 
         const subtotal = normalizedItems.reduce((sum, item) => sum + Number(item.totalPrice || 0), 0)
-        const fee = Number(deliveryFee || 0)
-        if (!Number.isFinite(fee) || fee < 0 || fee > 100000) {
-            return res.status(400).json({ message: 'Delivery fee must be a valid non-negative amount.' })
-        }
+        const fee = 0
         const totalPrice = subtotal + fee
 
         const session = await mongoose.startSession()
@@ -148,6 +145,7 @@ const createOrder = async (req, res) => {
                     notes: String(notes || '').trim(),
                     items: normalizedItems
                 }], { session })
+                await Basket.updateOne({ _id: basket._id }, { $set: { Products: [] } }, { session })
                 createdOrder = order
             })
         } finally {

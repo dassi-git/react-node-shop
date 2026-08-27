@@ -35,7 +35,7 @@ A learning-focused e-commerce application built with the MERN stack, with server
 
 ## 🛠️ Tech Stack
 
-**Frontend:** React 19, Redux Toolkit, RTK Query, PrimeReact  
+**Frontend:** React 18.3, Redux Toolkit, RTK Query, PrimeReact
 **Backend:** Node.js, Express 5, MongoDB, Mongoose  
 **Security:** JWT, bcrypt, express-rate-limit, helmet  
 **Logging:** Winston  
@@ -44,9 +44,9 @@ A learning-focused e-commerce application built with the MERN stack, with server
 ## ⚙️ Installation
 
 ### Prerequisites
-- Node.js (v14+)
-- MongoDB
-- Gmail account (for emails)
+- Node.js 18+
+- MongoDB 6+ (local or hosted)
+- Gmail account with an app password (only if email features are enabled)
 
 ### Setup
 
@@ -76,6 +76,9 @@ EMAIL_PASSWORD=your-gmail-app-password
 CLIENT_URL=http://localhost:3000
 NODE_ENV=development
 ```
+
+Start MongoDB before starting the server. The server exposes `GET /health` for
+process health and `GET /ready` for MongoDB readiness.
 
 `client/.env`:
 ```env
@@ -128,15 +131,17 @@ copy-paste prompt for the next development session, read
 ## 🔒 Security Features
 
 ### Rate Limits
-- Login: 5 attempts / 15 min
-- Register: 3 accounts / hour
-- Password Reset: 3 attempts / 15 min
-- API: 100 requests / 15 min
+- Login: 5 attempts / 15 min per IP
+- Register: 3 accounts / hour per IP
+- Password Reset: 3 attempts / 15 min per IP
+- General API: 100 requests / 15 min
+- Payment mutations: protected by a dedicated limiter
 
 ### Authentication
 - JWT tokens (24h expiration)
 - bcrypt password hashing (10 rounds)
 - Secure HTTP-only cookies
+- CSRF protection for cookie-authenticated state-changing requests
 
 ## 📚 API Documentation
 
@@ -174,6 +179,43 @@ DELETE /api/basket/:id      # Remove item
 DELETE /api/basket          # Clear basket
 ```
 
+### Orders (Protected)
+```http
+POST   /api/order                   # Create order from the server-side basket
+GET    /api/order/my                # Current user's orders
+GET    /api/order/:id               # Get an order
+POST   /api/order/:id/accept-quote  # Accept a quote
+GET    /api/order/admin             # All orders (Admin)
+PUT    /api/order/:id/status        # Update order status (Admin)
+```
+
+### Quotes (Protected)
+```http
+POST /api/quote                   # Create quote (Admin)
+GET  /api/quote/order/:orderId    # Quotes for an order
+PUT  /api/quote/:id/accept        # Accept quote
+PUT  /api/quote/:id/reject        # Reject quote
+```
+
+### Payments (Protected)
+```http
+POST /api/payment                            # Create internal payment
+GET  /api/payment/order/:orderId             # Payments for an order
+PUT  /api/payment/:id/confirm                # Confirm payment (Admin)
+POST /api/payment/stripe/checkout            # Create Stripe checkout
+POST /api/payment/stripe/complete/:sessionId # Complete Stripe checkout
+POST /api/payment/paypal/order               # Create PayPal order
+POST /api/payment/paypal/capture/:orderId    # Capture PayPal order
+POST /api/payment/stripe/webhook             # Stripe webhook (signature verified)
+```
+
+### Bundles
+```http
+GET    /api/bundle      # All bundles
+POST   /api/bundle      # Create bundle (Admin)
+DELETE /api/bundle/:id  # Delete bundle (Admin)
+```
+
 ## 📁 Project Structure
 
 ```
@@ -191,6 +233,9 @@ DELETE /api/basket          # Clear basket
     ├── middleware/        # Auth & validation
     ├── models/            # Mongoose schemas
     ├── routes/            # API routes
+    ├── services/          # Shared business services
+    ├── scripts/            # Maintenance and utility scripts
+    ├── data/               # Local MongoDB data (development only)
     └── logs/              # Application logs
 ```
 

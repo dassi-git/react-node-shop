@@ -47,7 +47,7 @@ const paymentSchema = new mongoose.Schema({
 
 paymentSchema.index(
     { provider: 1, providerPaymentId: 1 },
-    { unique: true, partialFilterExpression: { providerPaymentId: { $type: 'string', $ne: '' } } }
+    { unique: true, partialFilterExpression: { providerPaymentId: { $type: 'string', $gt: '' } } }
 )
 paymentSchema.index(
     { orderId: 1 },

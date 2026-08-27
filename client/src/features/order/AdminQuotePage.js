@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { useGetAllOrdersQuery, useCreateQuoteMutation, useUpdateOrderStatusMutation } from './orderSlice'
+import { useGetAllOrdersQuery, useCreateQuoteMutation } from './orderSlice'
 import { Button } from 'primereact/button'
 import { Card } from 'primereact/card'
 import { InputNumber } from 'primereact/inputnumber'
@@ -9,7 +9,6 @@ import { Toast } from 'primereact/toast'
 const AdminQuotePage = () => {
     const { data: orders = [], isLoading } = useGetAllOrdersQuery()
     const [createQuote, { isLoading: isSendingQuote }] = useCreateQuoteMutation()
-    const [updateOrderStatus] = useUpdateOrderStatusMutation()
     const toast = React.useRef(null)
     const [quoteForm, setQuoteForm] = useState({
         orderId: '',
@@ -39,8 +38,6 @@ const AdminQuotePage = () => {
                 notes: quoteForm.notes,
                 validUntil: new Date(Date.now() + 1000 * 60 * 60 * 24 * 3).toISOString()
             }).unwrap()
-
-            await updateOrderStatus({ id: quoteForm.orderId, status: 'quote_sent' }).unwrap()
 
             toast.current?.show({
                 severity: 'success',

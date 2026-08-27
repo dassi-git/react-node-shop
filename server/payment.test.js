@@ -1,6 +1,7 @@
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const bcrypt = require('bcrypt')
+const crypto = require('node:crypto')
 const jwt = require('jsonwebtoken')
 const mongoose = require('mongoose')
 const { MongoMemoryReplSet } = require('mongodb-memory-server')
@@ -180,4 +181,53 @@ test('concurrent internal payment requests create only one active payment', asyn
 
     assert.deepEqual(results.map((result) => result.response.status).sort((a, b) => a - b), [201, 409])
     assert.equal(await Payment.countDocuments({ orderId: order._id, status: { $in: ['pending', 'paid'] } }), 1)
+})
+
+test('signed Stripe webhook is idempotent when delivered twice', async () => {
+    const order = await createOrderWithAcceptedQuote()
+    order.status = 'payment_pending'
+    await order.save()
+
+    const sessionId = `cs_test_${Date.now()}`
+    await Payment.create({
+        orderId: order._id,
+        userId: order.userId,
+        amount: 75,
+        paymentMethod: 'stripe',
+        provider: 'stripe',
+        providerPaymentId: sessionId,
+        status: 'pending'
+    })
+
+    const secret = 'whsec_payment_test'
+    const savedKeys = { STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET }
+    process.env.STRIPE_SECRET_KEY = 'sk_test_payment_webhook'
+    process.env.STRIPE_WEBHOOK_SECRET = secret
+
+    const payload = JSON.stringify({
+        id: `evt_test_${Date.now()}`,
+        object: 'event',
+        type: 'checkout.session.completed',
+        data: { object: { id: sessionId, payment_status: 'paid', amount_total: 7500, metadata: { orderId: order._id.toString() } } }
+    })
+    const timestamp = Math.floor(Date.now() / 1000)
+    const signature = crypto.createHmac('sha256', secret).update(`${timestamp}.${payload}`).digest('hex')
+    const headers = { 'content-type': 'application/json', 'stripe-signature': `t=${timestamp},v1=${signature}` }
+
+    try {
+        const first = await request('/api/payment/stripe/webhook', { method: 'POST', headers, body: payload })
+        assert.equal(first.response.status, 200)
+        assert.equal((await Order.findById(order._id)).status, 'paid')
+        assert.equal(await Payment.countDocuments({ orderId: order._id }), 1)
+
+        const second = await request('/api/payment/stripe/webhook', { method: 'POST', headers, body: payload })
+        assert.equal(second.response.status, 200)
+        assert.equal(second.body.received, true)
+        assert.equal(await Payment.countDocuments({ orderId: order._id }), 1)
+    } finally {
+        for (const [key, value] of Object.entries(savedKeys)) {
+            if (value === undefined) delete process.env[key]
+            else process.env[key] = value
+        }
+    }
 })

@@ -126,6 +126,20 @@
     font-weight: 600;
 }
 
+.products-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-top: 1.5rem;
+}
+
+.products-pagination span {
+    min-width: 7rem;
+    text-align: center;
+}
+
 .advanced-filters {
     display: grid;
     grid-template-columns: minmax(220px, 1.5fr) repeat(3, minmax(0, 1fr)) auto;

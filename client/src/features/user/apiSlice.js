@@ -22,7 +22,7 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
     
     const url = typeof args === 'string' ? args : args.url;
     
-    const isAuthEndpoint = url?.includes('/user/login') || url?.includes('/user/register') || url?.includes('/user/profile');
+    const isAuthEndpoint = url?.includes('/user/login') || url?.includes('/user/register');
     
     const authMessage = result?.error?.data?.message || '';
     const tokenExpired = result?.error?.status === 403 && authMessage.includes('Invalid or expired token');

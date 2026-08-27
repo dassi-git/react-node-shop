@@ -41,6 +41,10 @@ const register = async (req, res) => {
     if (password.length < 6) {
         return res.status(400).json({ message: 'Password must be at least 6 characters long' })
     }
+
+    if (!/^\d{9,10}$/.test(String(phone).replace(/-/g, ''))) {
+        return res.status(400).json({ message: 'Invalid phone number' })
+    }
     
     const userExist = await User.findOne({ userName: normalizedUserName }).lean()
     if (userExist)

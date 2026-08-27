@@ -4,10 +4,11 @@ import Login from './features/user/login';
 import ForgotPassword from './features/user/ForgotPassword';
 import ResetPassword from './features/user/ResetPassword';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { skipToken } from '@reduxjs/toolkit/query';
 import { useEffect } from 'react';
 import { useGetCurrentUserProfileQuery } from './features/user/userSlice';
-import { setToken } from './features/user/authSlice';
-import { useDispatch } from 'react-redux';
+import { setAuthInitialized, setToken } from './features/user/authSlice';
+import { useDispatch, useSelector } from 'react-redux';
 
 import Layout from './components/cpmponents/layout';
 import Home from './components/Home';
@@ -32,11 +33,22 @@ import SeasonManagementPage from './features/season/SeasonManagementPage';
 
 function App() {
   const dispatch = useDispatch();
-  const { data: currentUser } = useGetCurrentUserProfileQuery();
+  const isUserLoggedIn = useSelector((state) => state.auth.isUserLoggedIn);
+  const hasSessionCookie = document.cookie.includes('csrfToken=');
+  const profileQuery = useGetCurrentUserProfileQuery(
+    isUserLoggedIn || hasSessionCookie ? undefined : skipToken
+  );
+  const { data: currentUser } = profileQuery;
 
   useEffect(() => {
     if (currentUser) dispatch(setToken({ user: currentUser }));
   }, [currentUser, dispatch]);
+
+  useEffect(() => {
+    if ((!hasSessionCookie && !isUserLoggedIn) || (!profileQuery.isLoading && !profileQuery.isUninitialized)) {
+      dispatch(setAuthInitialized());
+    }
+  }, [dispatch, hasSessionCookie, isUserLoggedIn, profileQuery.isLoading, profileQuery.isUninitialized]);
 
   return (
     <div className="App">

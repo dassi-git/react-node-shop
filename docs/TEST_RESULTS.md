@@ -36,6 +36,32 @@
 | Image upload validation | `PASS` | `node --test upload-validation.test.js`: 2 tests עברו; GIF נדחה וקובץ PNG מעל `5MB` נדחה |
 | Full server regression after upload validation | `PASS` | `npm test` מתוך `server`: 30 tests עברו עם `--test-concurrency=1` |
 | Low-stock warning browser check | `PASS` | דף מוצר עם `LOWSTOCK` הציג בדפדפן את האזהרה "מלאי נמוך - מומלץ להזמין בהקדם" עם `role=status`; frontend CI build עבר |
+| Order transaction rollback coverage | `PASS` | `node --test --test-name-pattern="rolls back inventory" order.test.js`: כשל בשריון פריט מאוחר החזיר `400`, ביטל את שריון המלאי, שמר את הסל ולא יצר הזמנה נוספת |
+| Mobile catalog and product accessibility check | `PASS` | בדפדפן ב־viewport `390x844`: הקטלוג הציג 4 כרטיסים ושדה חיפוש ללא overflow אופקי; דף המוצר נטען ללא overflow, עם label לתאריך, focusable controls ו־warning עם `role=status` |
+| Duplicate username registration coverage | `PASS` | `node --test authorization.test.js`: 6 tests עברו; username קיים לאחר normalization מחזיר `409 Duplicate username` ואינו יוצר משתמש נוסף |
+| Registration input validation coverage | `PASS` | `node --test --test-name-pattern="invalid email and short password" authorization.test.js`: אימייל לא תקין וסיסמה קצרה נדחו ב־`400` לפני כתיבה למסד |
+| Registration phone validation coverage | `PASS` | `node --test --test-name-pattern="invalid phone" authorization.test.js`: מספר טלפון לא תקין נדחה ב־`400` לפני כתיבה למסד |
+| Unknown-user login coverage | `PASS` | `node --test --test-name-pattern="unknown user" authorization.test.js`: משתמש שאינו קיים מקבל `401 Unauthorized` כללי ללא `Set-Cookie` |
+| Expired-token client redirect | `PASS` | בדפדפן: cookie לא תקף בנתיב מוגן הפעיל את alert פקיעת החיבור, ניקה את session והפנה ל־`/login`; `CI=true npm --prefix client run build` עבר |
+| Cross-user profile authorization coverage | `PASS` | `node --test --test-name-pattern="another user" authorization.test.js`: משתמש רגיל קיבל `403` בקריאה ובעדכון משתמש אחר, והנתונים המוגנים נשארו ללא שינוי |
+| Product seasonal premium/unavailable order flow | `PASS` | `node --test fruitSeason.test.js`: 4 tests עברו; מוצר עם `fruitKey` אמיתי חישב תוספת premium, חסם פרי unavailable ושמר seasonal snapshot בהזמנה |
+| Catalog PrimeReact warning cleanup | `PASS` | `CI=true npm --prefix client run build` ו־`CI=true npm --prefix client test -- --watchAll=false --runInBand` עברו; הוסר `inputId` שהועבר ל־DOM כ-prop לא תקין |
+| Browser catalog recheck after warning cleanup | `BLOCKED` | הדפדפן נשאר בלולאת alert של session שפג עם תגובות `401`, ולכן לא ניתן היה לבצע reload נקי ולאמת console לאחר ה-build |
+| Anonymous profile request prevention | `PASS` | דף `/allProduct` חדש בדפדפן נטען ללא alert וללא בקשת `GET /api/user/profile` אנונימית; `CI=true npm --prefix client test -- --watchAll=false --runInBand` עבר עם 3 tests ו־build CI עבר |
+| Product API and catalog search recheck | `PASS` | `GET http://127.0.0.1:8888/api/product` החזיר `200` עם 4 מוצרים; בדפדפן החיפוש `סלסלת` צמצם לתוצאה אחת, וב־viewport `620x347` לא נמצא overflow אופקי |
+| Browser registration/login/profile acceptance | `PASS` | בדפדפן נוצר משתמש בדיקה, ההתחברות הצליחה, הניווט הציג `שלום Browser Test User`, נוצר `csrfToken`, ו־`GET /api/user/profile` נטען ללא `401`; השרת אותחל מחדש מקוד המקור הנוכחי |
+| Browser basket-to-quote acceptance | `PASS` | בדפדפן מוצר נוסף לסל עם הודעת הצלחה, הסל הציג כמות `1` וסכום `189 ₪`, בקשת הצעת המחיר כללה עיר, כתובת ותאריך `27/08/2026`, ונוצרה הזמנה `ORD-MTB8TUJX-PYQOCK` בסטטוס `ממתין להצעת מחיר` |
+| Admin quote duplicate status update | `FIXED` | בדיקת דפדפן חשפה שיצירת הצעה הצליחה אך עדכון `quote_sent` הכפול החזיר `400`; הוסר העדכון הכפול מ־`AdminQuotePage`, ולאחר מכן build CI ובדיקות `quote.test.js` עברו |
+| Admin quote and customer approval acceptance | `PASS` | API מקומי לאחר אתחול rate limiter: login/orders/quotes/accept החזירו `200`; ההצעה `210 ₪` עם מקדמה `105 ₪` אושרה וההזמנה `ORD-MTB8TUJX-PYQOCK` עברה ל־`quote_accepted` |
+| Approved-order external payment fallback | `PASS` | API מקומי עם CSRF תקין: להזמנה `ORD-MTB8TUJX-PYQOCK` עם מקדמה `105 ₪`, Stripe ו־PayPal החזירו `503` עם הודעת configuration ברורה, ורשומות התשלום נותרו ריקות |
+| Protected-route auth bootstrap race | `FIXED` | פתיחה ישירה של `/my-orders` עם session cookie הציגה `טוען חיבור...` במקום redirect מוקדם, ולאחר bootstrap נטענה ההזמנה המאושרת עם כפתורי התשלום |
+| Mobile approved-order UX | `PASS` | בדפדפן ב־viewport `390x844`: ההזמנה, מחיר `210 ₪`, מקדמה `105 ₪` וכפתורי Stripe/PayPal הוצגו ללא overflow אופקי |
+| Local API response-time smoke check | `PASS` | `Invoke-WebRequest` מול השרת המקומי: `/health` החזיר `200` בכ־`36.34ms`, `/ready` החזיר `200` בכ־`17.40ms`, ו־`/api/product` החזיר `200` בכ־`20.79ms` |
+| Lazy image loading in catalog | `PASS` | נוספה טעינה עצלה לתמונות חוזרות בקטלוג, thumbnails ומוצרים דומים; בדפדפן 4 כרטיסים הכילו `loading="lazy"`, ללא overflow; frontend tests ו־CI build עברו |
+| Catalog pagination implementation | `PASS` | נוסף pagination מקומי של 12 מוצרים לעמוד עם איפוס עמוד בעת שינוי סינון וכפתורי ניווט נגישים; frontend tests ו־CI build עברו, ובדפדפן קטלוג של 4 מוצרים נשאר ללא overflow. תרחיש רב־עמודים דורש נתוני קטלוג גדולים יותר |
+| MongoDB index synchronization | `FIXED` | `Payment` partial index עם `$ne` נדחה על ידי MongoDB; הוחלף ל־`$gt: ''`, וכל המודלים נטענים ומריצים `createIndexes` לאחר startup. בדיקת האינדקס הציגה בפועל `provider_1_providerPaymentId_1` ייחודי |
+| Order regression after index synchronization | `PASS` | `node --test order.test.js`: 6 tests עברו לאחר תיקון fixture היסטוריית המוצר לשימוש ב־Basket ועדכון ציפיית מספר ההזמנות |
+| Full server regression after index synchronization | `PASS` | `npm test` מתוך `server`: 47 tests עברו עם `--test-concurrency=1` |
 
 ## הרצה 2026-08-26
 
@@ -58,6 +84,17 @@
 | תרחיש משתמש מלא | `PASS` | MongoDB Replica Set מקומי ו־API על `8888`: הרשמה, התחברות, פרופיל, סל, יצירת הזמנה, כניסת מנהל, יצירת הצעה ואישור הצעה עברו; סטטוס סופי `quote_accepted` |
 | תשלום Stripe | `BLOCKED` | בדיקת Checkout authenticated החזירה `503`: חסר `STRIPE_SECRET_KEY`; לא ניתן לבצע תשלום Test ללא מפתח Stripe |
 | תשלום PayPal | `BLOCKED` | בדיקת יצירת PayPal Order authenticated החזירה `503`: חסרים פרטי Sandbox |
+| Signed Stripe webhook idempotency | `PASS` | `node --test payment.test.js`: 4 tests עברו; webhook חתום שנמסר פעמיים אישר את ההזמנה פעם אחת ושמר רשומת תשלום יחידה |
+| Concurrent quote idempotency | `PASS` | `node --test quote.test.js`: 2 tests עברו; שתי בקשות הצעה מקבילות החזירו `201` ו־`409` ונשמרה הצעה פעילה יחידה |
+| Order delivery validation | `PASS` | `node --test order.test.js`: 2 tests עברו; כתובת חסרה, תאריך לא תקין, הערות ארוכות וסל ריק נדחו ב־`400` ללא יצירת הזמנה |
+| Full server regression after order validation coverage | `PASS` | `npm test` מתוך `server`: 35 tests עברו עם `--test-concurrency=1` |
+| Auth registration and login integration | `PASS` | `node --test authorization.test.js`: 5 tests עברו; הרשמה, normalization, duplicate email, cookies וסיסמה שגויה נבדקו |
+| Order status transition authorization | `PASS` | `node --test order.test.js`: 3 tests עברו; משתמש רגיל נדחה, מעברים חוקיים נאכפו, ומעבר ל־`paid` ללא תשלום מאושר נדחה ללא שינוי במסד |
+| Terminal order immutability | `PASS` | `node --test order.test.js`: 4 tests עברו; הזמנות `completed` ו־`cancelled` דחו שינוי סטטוס ושמרו את הסטטוס המקורי |
+| Quote cross-user authorization | `PASS` | `node --test quote.test.js`: 2 tests עברו; משתמש שאינו בעל ההזמנה נחסם בקריאת הצעה ובאישור הצעה, ללא שינוי במסד |
+| Quote input validation | `PASS` | `node --test quote.test.js`: 3 tests עברו; מחיר/משלוח שליליים, מקדמה גבוהה, תוקף שפג והערות ארוכות נדחו ללא יצירת הצעה |
+| Rejected quote immutability | `PASS` | `node --test quote.test.js`: 3 tests עברו; הצעה שנדחתה לא ניתנת לאישור מחדש והצעת המחיר וההזמנה נשארות `rejected` ו־`quote_rejected` |
+| Password reset security integration | `PASS` | `node --test authorization.test.js`: 6 tests עברו; תשובה כללית, סיסמה חלשה, token חד־פעמי ו־token שפג נבדקו |
 | Browser catalog smoke test | `PASS` | דף הקטלוג הציג 3 מוצרים ותמונות fallback תקינות |
 | Browser interaction smoke test | `PASS` | סינון, חיפוש, פתיחת מוצר וניתוב התחברות נבדקו |
 | Browser visual UX check | `PASS` | RTL, ₪, תמונות, ניגודיות וללא overflow אופקי נבדקו |
@@ -107,9 +144,10 @@
 - **סטטוס:** `BLOCKED`
 - **חומרה:** גבוהה לפני קבלת תשלום אמיתי.
 - **סיבה:** אין בקובץ `server/.env` מפתחות Stripe או PayPal Sandbox.
+- **החלטת מוצר:** בשלב הנוכחי אין לעסק עוסק פטור או עוסק מורשה, ולכן אין אפשרות להגדיר חשבונות Stripe/PayPal. נחזור למשימה הזו לפני העלייה לענן.
 - **מה תוקן:** endpoints קיימים, כוללים בדיקות הרשאה, בדיקת quote ואימות סכום.
 - **מה עדיין צריך לבדוק:** Checkout מוצלח, ביטול, כשל, תשלום כפול, וחזרה מאומתת מהספק.
-- **השלב הבא:** להגדיר מפתחות Test/Sandbox ולהריץ תשלום בדיקה.
+- **השלב הבא:** לפני העלייה לענן, לאחר רישום העסק ופתיחת חשבונות מתאימים, להגדיר מפתחות Test/Sandbox ולהריץ תשלום בדיקה מלא.
 
 ### TEST-008 - Stripe Checkout חסום ללא מפתח Test
 
@@ -117,6 +155,7 @@
 - **חומרה:** גבוהה לפני קבלת תשלום אמיתי.
 - **פקודה:** התחברות עם משתמש בעל הזמנה בסטטוס `quote_accepted`, ולאחר מכן `POST /api/payment/stripe/checkout` עם `orderId` תקין.
 - **תוצאה:** HTTP `503`, גוף התשובה: `Stripe is not configured. Add STRIPE_SECRET_KEY to server/.env.`
+- **החלטת מוצר:** אין כרגע credentials משום שהעסק טרם נרשם; יש לחזור לבדיקה הזו לפני העלייה לענן.
 - **מה עדיין צריך לבדוק:** להגדיר `STRIPE_SECRET_KEY` במצב Test, לבצע Checkout, לבדוק ביטול, כשל, חזרה מאומתת, התאמת סכום, webhook חתום ותשלום כפול.
 
 ### TEST-009 - PayPal Sandbox חסום ללא credentials
@@ -125,7 +164,16 @@
 - **חומרה:** גבוהה לפני קבלת תשלום אמיתי.
 - **פקודה:** `POST /api/payment/paypal/order` עם משתמש מורשה והזמנה בסטטוס `quote_accepted` או `payment_pending`.
 - **תוצאה:** HTTP `503`, גוף התשובה: `PayPal is not configured. Add sandbox credentials to server/.env.`
+- **החלטת מוצר:** אין כרגע credentials משום שהעסק טרם נרשם; יש לחזור לבדיקה הזו לפני העלייה לענן.
 - **מה עדיין צריך לבדוק:** להגדיר `PAYPAL_CLIENT_ID` ו־`PAYPAL_CLIENT_SECRET` של Sandbox, ליצור Order, לבצע Capture, לבדוק התאמת סכום ותשלום כפול.
+
+### TEST-016 - webhook חתום של Stripe והעברה חוזרת
+
+- **סטטוס:** `PASS`
+- **חומרה:** גבוהה לפני production, כדי שאירוע ספק חוזר לא יסמן עסקה פעמיים.
+- **פקודה:** `node --test payment.test.js`
+- **תוצאה:** 4 tests עברו; webhook `checkout.session.completed` חתום מקומית שנשלח פעמיים השאיר את ההזמנה ב־`paid` ואת התשלום ברשומה יחידה.
+- **הערה:** הבדיקה אינה מחליפה בדיקת Stripe Test מול ספק חיצוני; זו עדיין חסומה ללא `STRIPE_SECRET_KEY` ו־`STRIPE_WEBHOOK_SECRET` אמיתיים.
 
 ### TEST-007 - תרחיש authenticated מלא נעצר בכניסת מנהל
 

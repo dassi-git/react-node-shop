@@ -11,6 +11,7 @@ process.env.ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET || 'failure-te
 const { app } = require('./server')
 const User = require('./models/User')
 const Product = require('./models/Product')
+const Basket = require('./models/Basket')
 const Order = require('./models/Order')
 const Quote = require('./models/Quote')
 const Payment = require('./models/Payment')
@@ -46,6 +47,7 @@ test.after(async () => {
 
 test('missing products are rejected without creating an order', async () => {
     const missingProductId = new mongoose.Types.ObjectId()
+    await Basket.create({ userId: user._id, Products: [{ type: missingProductId, quantity: 1 }] })
     const { response, body } = await request('/api/order', {
         method: 'POST',
         headers: { 'content-type': 'application/json', Authorization: `Bearer ${userToken}` },
@@ -56,12 +58,14 @@ test('missing products are rejected without creating an order', async () => {
     })
 
     assert.equal(response.status, 400)
-    assert.equal(body.message, 'Product no longer exists.')
+    assert.equal(body.message, 'Order items are invalid.')
     assert.equal(await Order.countDocuments({ userId: user._id }), 0)
+    await Basket.deleteOne({ userId: user._id })
 })
 
 test('out-of-stock products are rejected without creating an order', async () => {
     const product = await Product.create({ name: 'Unavailable Product', price: 100, quantity: 0, productExist: 'OUTOFSTOCK', inventoryStatus: 'OUTOFSTOCK' })
+    await Basket.create({ userId: user._id, Products: [{ type: product._id, quantity: 1 }] })
     const { response, body } = await request('/api/order', {
         method: 'POST',
         headers: { 'content-type': 'application/json', Authorization: `Bearer ${userToken}` },

@@ -1,6 +1,21 @@
 const mongoose = require('mongoose')
 const { MongoMemoryReplSet } = require('mongodb-memory-server')
 
+const ensureModelIndexes = async () => {
+  ;[
+    '../models/User',
+    '../models/Product',
+    '../models/Basket',
+    '../models/Bundle',
+    '../models/Order',
+    '../models/Quote',
+    '../models/Payment',
+    '../models/FruitSeason',
+    '../models/PasswordReset'
+  ].forEach((modelPath) => require(modelPath))
+  await Promise.all(mongoose.modelNames().map((modelName) => mongoose.model(modelName).createIndexes()))
+}
+
 const seedDevelopmentProducts = async () => {
   if (process.env.NODE_ENV !== 'development') return
 
@@ -59,6 +74,7 @@ const connectDB = async () => {
         connectTimeoutMS: 5000
     })
     await seedDevelopmentProducts()
+    await ensureModelIndexes()
     return mongoose.connection
   } catch (err) {
     if (process.env.NODE_ENV === 'production') throw err
@@ -72,6 +88,7 @@ const connectDB = async () => {
         connectTimeoutMS: 5000
       })
       await seedDevelopmentProducts()
+      await ensureModelIndexes()
       return mongoose.connection
     } catch (memoryErr) {
       memoryErr.message = `Failed to connect to MongoDB and memory DB: ${memoryErr.message}`

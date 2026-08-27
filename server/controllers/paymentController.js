@@ -24,12 +24,24 @@ const finishPayment = async ({ orderId, userId, amount, provider, providerPaymen
     let payment
     try {
         await session.withTransaction(async () => {
+            const existingPayment = await Payment.findOne({ orderId, provider, providerPaymentId }).session(session)
+            if (existingPayment?.status === 'paid') {
+                payment = existingPayment
+                return
+            }
+
+            const order = await Order.findOneAndUpdate(
+                { _id: orderId, status: 'payment_pending' },
+                { $set: { status: 'paid', finalPrice: amount } },
+                { new: true, session }
+            )
+            if (!order) throw new Error('Order is not awaiting payment.')
+
             payment = await Payment.findOneAndUpdate(
                 { orderId, provider, providerPaymentId },
                 { orderId, userId, amount, paymentMethod: provider === 'paypal' ? 'paypal' : 'stripe', provider, providerPaymentId, status: 'paid' },
                 { new: true, upsert: true, setDefaultsOnInsert: true, session }
             )
-            await Order.findByIdAndUpdate(orderId, { status: 'paid', finalPrice: amount }, { session })
         })
     } finally {
         await session.endSession()
@@ -80,6 +92,7 @@ const stripeWebhook = async (req, res) => {
         if (error.type === 'StripeSignatureVerificationError') {
             return res.status(400).json({ message: 'Invalid Stripe webhook signature.' })
         }
+        if (error.message === 'Order is not awaiting payment.') return res.status(400).json({ message: error.message })
         console.error('Error processing Stripe webhook:', error)
         return res.status(500).json({ message: 'Unable to process Stripe webhook.' })
     }
@@ -205,6 +218,7 @@ const completeStripeCheckout = async (req, res) => {
         const payment = await finishPayment({ orderId: order._id, userId: order.userId, amount: paidAmount, provider: 'stripe', providerPaymentId: session.id })
         return res.json({ message: 'Stripe payment confirmed', payment })
     } catch (error) {
+        if (error.message === 'Order is not awaiting payment.') return res.status(400).json({ message: error.message })
         console.error('Error completing Stripe checkout:', error)
         return res.status(502).json({ message: 'Unable to confirm Stripe payment' })
     }
@@ -267,6 +281,7 @@ const capturePaypalOrder = async (req, res) => {
         const payment = await finishPayment({ orderId: paymentRecord.orderId, userId: paymentRecord.userId, amount: paymentRecord.amount, provider: 'paypal', providerPaymentId: paypalOrder.id })
         return res.json({ message: 'PayPal payment confirmed', payment })
     } catch (error) {
+        if (error.message === 'Order is not awaiting payment.') return res.status(400).json({ message: error.message })
         console.error('Error capturing PayPal order:', error)
         return res.status(502).json({ message: 'Unable to confirm PayPal payment' })
     }
