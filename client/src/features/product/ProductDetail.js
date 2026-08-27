@@ -6,7 +6,7 @@ import { RadioButton } from 'primereact/radiobutton';
 import { Button } from 'primereact/button';
 import { Tag } from 'primereact/tag';
 import { Rating } from 'primereact/rating';
-import { useGetAllProductQuery } from './productSlice';
+import { useGetAllProductQuery, useGetProductIdQuery } from './productSlice';
 import { useGetBundlesQuery } from './bundleSlice';
 import './ProductDetail.css';
 import { useUpdeteProductMutation } from '../basket/basketSlise';
@@ -18,6 +18,7 @@ const ProductDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { data: products = [] } = useGetAllProductQuery();
+  const { data: requestedProduct, isLoading: isProductLoading, isError: isProductError } = useGetProductIdQuery(id);
   const { data: bundles = [] } = useGetBundlesQuery();
   const { isUserLoggedIn } = useSelector((state) => state.auth);
   const [deliveryDate, setDeliveryDate] = useState(new Date());
@@ -28,8 +29,8 @@ const ProductDetail = () => {
   const toast = useRef(null);
 
   const product = useMemo(
-    () => products.find((item) => String(item._id) === String(id) || String(item.id) === String(id)),
-    [products, id]
+    () => requestedProduct || products.find((item) => String(item._id) === String(id) || String(item.id) === String(id)),
+    [requestedProduct, products, id]
   );
 
   const similarProducts = useMemo(() => {
@@ -55,7 +56,11 @@ const ProductDetail = () => {
 
   const seasonByFruitKey = useMemo(() => new Map(seasonalFruits.map((season) => [season.fruitKey, season])), [seasonalFruits]);
 
-  if (!product) {
+  if (isProductLoading && !product) {
+    return <div className="product-detail-page"><h2>טוען מוצר...</h2></div>;
+  }
+
+  if (isProductError || !product) {
     return (
       <div className="product-detail-page">
         <h2>המוצר לא נמצא</h2>
@@ -133,6 +138,7 @@ const ProductDetail = () => {
               <Tag value={product.inventoryStatus || 'INSTOCK'} severity="success" />
               <Tag value="משלוח מהיר" severity="info" />
             </div>
+            {product.inventoryStatus === 'LOWSTOCK' && <p className="product-low-stock-warning" role="status">מלאי נמוך - מומלץ להזמין בהקדם</p>}
 
             <h1>{product.name}</h1>
             <div className="product-rating-row">

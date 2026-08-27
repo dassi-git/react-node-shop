@@ -112,3 +112,41 @@ test('basket supports create, quantity changes, item removal, and clearing', asy
     assert.equal(empty.response.status, 200)
     assert.deepEqual(empty.body, [])
 })
+
+test('basket keeps different customization selections as separate priced items', async () => {
+    const customizedProduct = await Product.create({
+        name: 'Customized Basket Product',
+        price: 40,
+        quantity: 5,
+        productExist: 'INSTOCK',
+        inventoryStatus: 'INSTOCK',
+        customizationOptions: [{
+            name: 'גודל',
+            selectionType: 'multiple',
+            required: true,
+            maxSelections: 2,
+            additionalSelectionPrice: 3,
+            values: [
+                { label: 'קטן', value: 'small', priceAdjustment: 2 },
+                { label: 'גדול', value: 'large', priceAdjustment: 5 },
+                { label: 'מתנה', value: 'gift', priceAdjustment: 3 }
+            ]
+        }]
+    })
+
+    const first = await request(`/api/basket/${customizedProduct._id}`, jsonOptions('PUT', {
+        selectedOptions: { גודל: ['small'] }
+    }))
+    assert.equal(first.response.status, 200)
+
+    const second = await request(`/api/basket/${customizedProduct._id}`, jsonOptions('PUT', {
+        selectedOptions: { גודל: ['large', 'gift'] }
+    }))
+    assert.equal(second.response.status, 200)
+
+    const stored = await Basket.findOne({ userId: user._id }).lean()
+    const customizedItems = stored.Products.filter((item) => item.type.toString() === customizedProduct._id.toString())
+    assert.equal(customizedItems.length, 2)
+    assert.deepEqual(customizedItems.map((item) => item.selectedOptions.גודל), [['small'], ['large', 'gift']])
+    assert.deepEqual(customizedItems.map((item) => item.optionPriceAdjustment).sort((a, b) => a - b), [2, 11])
+})

@@ -5,14 +5,14 @@ import { logOut } from './authSlice';
 const configuredBaseUrl = process.env.REACT_APP_API_BASE_URL || "http://localhost:8888/api/"
 const baseUrl = configuredBaseUrl.endsWith('/') ? configuredBaseUrl : `${configuredBaseUrl}/`
 
+const getCsrfToken = () => document.cookie.match(/(?:^|;\s*)csrfToken=([^;]+)/)?.[1] || ''
+
 const baseQuery = fetchBaseQuery({
     baseUrl,
     credentials:"include",
-    prepareHeaders:(Headers,{getState})=>{
-        const token=getState().auth.token
-        if(token){
-            Headers.set("authorization", `Bearer ${token}`)
-        }
+    prepareHeaders:(Headers)=>{
+        const csrfToken = getCsrfToken()
+        if (csrfToken) Headers.set("x-csrf-token", decodeURIComponent(csrfToken))
         return Headers
     }
 });
@@ -22,7 +22,7 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
     
     const url = typeof args === 'string' ? args : args.url;
     
-    const isAuthEndpoint = url?.includes('/user/login') || url?.includes('/user/register');
+    const isAuthEndpoint = url?.includes('/user/login') || url?.includes('/user/register') || url?.includes('/user/profile');
     
     const authMessage = result?.error?.data?.message || '';
     const tokenExpired = result?.error?.status === 403 && authMessage.includes('Invalid or expired token');

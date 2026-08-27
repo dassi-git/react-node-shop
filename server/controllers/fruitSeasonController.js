@@ -47,6 +47,7 @@ const createSeason = async (req, res) => {
 
 const updateSeason = async (req, res) => {
     try {
+        if (!require('mongoose').isValidObjectId(req.params.id)) return res.status(400).json({ message: 'Invalid season ID.' })
         const data = validateSeason(req.body)
         const season = await FruitSeason.findById(req.params.id)
         if (!season) return res.status(404).json({ message: 'Season not found.' })
@@ -58,6 +59,7 @@ const updateSeason = async (req, res) => {
 
 const deleteSeason = async (req, res) => {
     try {
+        if (!require('mongoose').isValidObjectId(req.params.id)) return res.status(400).json({ message: 'Invalid season ID.' })
         const season = await FruitSeason.findByIdAndUpdate(req.params.id, { active: false, updatedBy: req.user._id }, { new: true })
         if (!season) return res.status(404).json({ message: 'Season not found.' })
         return res.json(season)

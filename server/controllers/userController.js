@@ -9,6 +9,20 @@ const { sendPasswordResetEmail } = require("../config/emailService")
 const hashResetToken = (token) => crypto.createHash('sha256').update(token).digest('hex')
 const normalizeEmail = (email) => String(email || '').trim().toLowerCase()
 const normalizeUserName = (userName) => String(userName || '').trim()
+const csrfCookieOptions = {
+    httpOnly: false,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+    maxAge: 24 * 60 * 60 * 1000,
+    path: '/'
+}
+const authCookieOptions = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+    maxAge: 24 * 60 * 60 * 1000,
+    path: '/'
+}
 
 
 const register = async (req, res) => {
@@ -77,7 +91,10 @@ const login = async (req, res) => {
 
         const userInfo = { _id: foundUser._id.toString(), name: foundUser.name, email: foundUser.email, userName: foundUser.userName, role: foundUser.role }
         const token = jwt.sign(userInfo, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '24h' })
-        res.json({ token: token })
+        const csrfToken = crypto.randomBytes(32).toString('hex')
+        res.cookie('accessToken', token, authCookieOptions)
+        res.cookie('csrfToken', csrfToken, csrfCookieOptions)
+        res.json({ user: userInfo })
     } catch (error) {
         console.error('Login error:', error)
         return res.status(500).json({ message: 'Server error during login' })
@@ -220,7 +237,8 @@ const getCurrentUserProfile = async (req, res) => {
 }
 
 const logout = async (req, res) => {
-    return res.status(204).end()
+    res.clearCookie('accessToken', { ...authCookieOptions, maxAge: undefined })
+    return res.clearCookie('csrfToken', { ...csrfCookieOptions, maxAge: undefined }).status(204).end()
 }
 
 const forgotPassword = async (req, res) => {

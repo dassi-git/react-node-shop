@@ -10,6 +10,33 @@
 - `FIXED` - תקלה שהתגלתה ותוקנה, עם בדיקה חוזרת שעברה.
 - `OPEN` - תקלה שעדיין לא תוקנה.
 
+## הרצה 2026-08-27
+
+| בדיקה | סטטוס | תוצאה |
+|---|---|---|
+| Basket and order regression | `PASS` | `node --test server/basket.test.js server/order.test.js`: 2 tests עברו, כולל התאמות, תמחור מהשרת, שמירת מלאי ואכיפת בעלות |
+| Customized basket integration | `PASS` | `node --test --test-name-pattern="different customization" server/basket.test.js`: בדיקה אחת עברה; שתי התאמות שונות נשמרו כשורות נפרדות עם תוספות מחיר `2` ו־`11` |
+| Basket and order regression after customization coverage | `PASS` | `node --test server/basket.test.js server/order.test.js`: 3 tests עברו |
+| Client startup for browser acceptance | `PASS` | `npm start` מתוך `client` הסתיים ב־`Compiled successfully` וה־client זמין על `3000` |
+| Browser catalog after loopback CORS fix | `PASS` | הקטלוג נטען מ־`127.0.0.1:3000` ומציג 3 מוצרים; ה־API החזיר `200` עם `Access-Control-Allow-Origin: http://127.0.0.1:3000` |
+| Browser customized-product acceptance | `PASS` | נוצר מוצר בדיקה מותאם, התחברות לקוח הצליחה, שתי קומבינציות נוספו בדפדפן במחירים `₪42.00` ו־`₪51.00`, ובמסד נשמרו שתי שורות נפרדות עם תוספות `2` ו־`11` |
+| Browser customized-product order continuation | `PASS` | טופס בקשת המחיר הציג את שתי השורות, עיר וכתובת נשלחו, ונוצרה הזמנה `ORD-MTB3BXG0-MRWYJD` בסטטוס `quote_requested` בסך `93 ₪` |
+| Duplicate React key in quote request | `FIXED` | תוקן `key` של פריטי הסל לפי מזהה שורת הסל; `npm --prefix client run build` עבר ללא שגיאת runtime חדשה |
+| Full server regression | `PASS` | `npm test` מתוך `server` עם `--test-concurrency=1`: 21 tests עברו; תצורת הבדיקה עודכנה כדי למנוע race condition בין suites של Mongoose |
+| Seasonal boundary and validation coverage | `PASS` | `node --test fruitSeason.test.js`: 2 tests עברו; גבולות תאריך כוללים, חפיפות פעילות נדחות ותוספת מחיר מזויפת נדחית |
+| Full server regression after seasonal coverage | `PASS` | `npm test` מתוך `server`: 23 tests עברו עם `--test-concurrency=1` |
+| Concurrent payment idempotency | `PASS` | `node --test payment.test.js`: 3 tests עברו; שתי בקשות תשלום מקבילות יוצרות תשלום פעיל יחיד |
+| Full server regression after payment hardening | `PASS` | `npm test` מתוך `server`: 24 tests עברו עם `--test-concurrency=1` |
+| Auth rate-limit coverage | `PASS` | `node --test auth-rate-limit.test.js`: 2 tests עברו; ניסיון שישי ל-login ורביעי ל-register מאותו IP נחסמו ב־`429` |
+| Full server regression after rate-limit coverage | `PASS` | `npm test` מתוך `server`: 26 tests עברו עם `--test-concurrency=1` |
+| Seasonal ID validation | `PASS` | `node --test fruitSeason.test.js`: 3 tests עברו; update/delete עם מזהה לא תקין מחזירים `400` לפני גישה למסד |
+| Full server regression after seasonal ID validation | `PASS` | `npm test` מתוך `server`: 27 tests עברו עם `--test-concurrency=1`; frontend build עבר בהצלחה |
+| JSON request-size limit | `PASS` | `node --test --test-name-pattern="larger than 1 MB" server.test.js`: payload מעל `1MB` נדחה ב־`413` |
+| Full server regression after JSON limit coverage | `PASS` | `npm test` מתוך `server`: 28 tests עברו עם `--test-concurrency=1` |
+| Image upload validation | `PASS` | `node --test upload-validation.test.js`: 2 tests עברו; GIF נדחה וקובץ PNG מעל `5MB` נדחה |
+| Full server regression after upload validation | `PASS` | `npm test` מתוך `server`: 30 tests עברו עם `--test-concurrency=1` |
+| Low-stock warning browser check | `PASS` | דף מוצר עם `LOWSTOCK` הציג בדפדפן את האזהרה "מלאי נמוך - מומלץ להזמין בהקדם" עם `role=status`; frontend CI build עבר |
+
 ## הרצה 2026-08-26
 
 ### סיכום

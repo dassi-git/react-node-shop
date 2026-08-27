@@ -2,6 +2,7 @@ import { Link, useNavigate } from "react-router-dom"
 import { useSelector, useDispatch } from "react-redux"
 import useAuth from "../../features/user/useAuth"
 import { logOut } from "../../features/user/authSlice"
+import { useLogoutMutation } from "../../features/user/userSlice"
 import { Button } from 'primereact/button'
 import './Nav.css'
 
@@ -10,14 +11,19 @@ const Nav = () => {
     const { isUserLoggedIn } = useSelector((state) => state.auth)
     const dispatch = useDispatch()
     const navigate = useNavigate()
+    const [logout] = useLogoutMutation()
 
     const objToken = useAuth()
     const roles = objToken?.role ?? null
     const isLoggedIn = Boolean(isUserLoggedIn && objToken)
 
-    const handleLogout = () => {
-        dispatch(logOut())
-        navigate('/')
+    const handleLogout = async () => {
+        try {
+            await logout().unwrap()
+        } finally {
+            dispatch(logOut())
+            navigate('/')
+        }
     }
 
     return (

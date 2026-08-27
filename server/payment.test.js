@@ -164,3 +164,20 @@ test('external payment endpoints report missing configuration without creating p
         }
     }
 })
+
+test('concurrent internal payment requests create only one active payment', async () => {
+    const order = await createOrderWithAcceptedQuote()
+    const options = {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${userToken}`, 'content-type': 'application/json' },
+        body: JSON.stringify({ orderId: order._id.toString(), paymentMethod: 'card' })
+    }
+
+    const results = await Promise.all([
+        request('/api/payment', options),
+        request('/api/payment', options)
+    ])
+
+    assert.deepEqual(results.map((result) => result.response.status).sort((a, b) => a - b), [201, 409])
+    assert.equal(await Payment.countDocuments({ orderId: order._id, status: { $in: ['pending', 'paid'] } }), 1)
+})

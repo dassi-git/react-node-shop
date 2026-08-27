@@ -18,6 +18,12 @@ const userSlice=apiSlice.injectEndpoints({
                 body:user
             })
         }),
+        logout:build.mutation({
+            query:() => ({
+                url:"/user/logout",
+                method:"POST"
+            })
+        }),
         // קבלת כל המשתמשים
         getAllUser:build.query({
             query:()=>({
@@ -72,4 +78,4 @@ const userSlice=apiSlice.injectEndpoints({
         })
     })
 })
-export const {useLoginMutation, useRegisterMutation, useGetAllUserQuery, useDeleteUserMutation, useUpdateUserMutation, useGetCurrentUserProfileQuery, useForgotPasswordMutation, useResetPasswordMutation}=userSlice
+export const {useLoginMutation, useRegisterMutation, useLogoutMutation, useGetAllUserQuery, useDeleteUserMutation, useUpdateUserMutation, useGetCurrentUserProfileQuery, useForgotPasswordMutation, useResetPasswordMutation}=userSlice

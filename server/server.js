@@ -8,6 +8,7 @@ const connectDB = require('./config/dbconn')
 const logger = require('./config/logger')
 const mongoose = require('mongoose')
 const { apiLimiter } = require('./middleware/rateLimiter')
+const csrfProtection = require('./middleware/csrfProtection')
 const paymentController = require('./controllers/paymentController')
 
 const PORT = Number(process.env.PORT) || 1003
@@ -38,6 +39,7 @@ app.use(express.static(path.join(__dirname, 'public')))
 app.post('/api/payment/stripe/webhook', apiLimiter, express.raw({ type: 'application/json', limit: '1mb' }), paymentController.stripeWebhook)
 app.use(express.json({ limit: '1mb' }))
 app.use('/api', apiLimiter)
+app.use('/api', csrfProtection)
 
 app.get('/health', (req, res) => {
     res.json({ status: 'ok' })

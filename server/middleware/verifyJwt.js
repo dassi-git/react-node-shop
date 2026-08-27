@@ -1,11 +1,19 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
+const getCookieToken = (cookieHeader) => {
+    const match = cookieHeader?.match(/(?:^|;\s*)accessToken=([^;]+)/)
+    return match ? decodeURIComponent(match[1]) : null
+}
+
 const verifyJWT = async (req, res, next) => {
     const authHeader = req.get('authorization');
-    const [scheme, token] = authHeader?.trim().split(/\s+/, 2) || [];
+    const [scheme, bearerToken] = authHeader?.trim().split(/\s+/, 2) || [];
+    const token = scheme?.toLowerCase() === 'bearer' && bearerToken
+        ? bearerToken
+        : getCookieToken(req.get('cookie'))
 
-    if (scheme?.toLowerCase() !== 'bearer' || !token) {
+    if (!token) {
         return res.status(401).json({ message: 'Unauthorized - No token provided' });
     }
 

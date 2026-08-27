@@ -88,3 +88,34 @@ test('expired tokens are rejected before protected access', async () => {
     assert.equal(response.status, 403)
     assert.deepEqual(body, { message: 'Forbidden - Invalid or expired token' })
 })
+
+test('login uses HttpOnly cookies and logout clears the cookie', async () => {
+    const loginResponse = await fetch(`${baseUrl}/api/user/login`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ userName: 'integration-user', password: 'Test1234' })
+    })
+    const loginBody = await loginResponse.json()
+    const setCookies = loginResponse.headers.getSetCookie()
+    const accessCookie = setCookies.find((cookie) => cookie.startsWith('accessToken='))
+    const csrfCookie = setCookies.find((cookie) => cookie.startsWith('csrfToken='))
+    const accessToken = accessCookie.match(/^accessToken=([^;]+)/)[1]
+    const csrfToken = csrfCookie.match(/^csrfToken=([^;]+)/)[1]
+    const cookieHeader = `accessToken=${accessToken}; csrfToken=${csrfToken}`
+
+    assert.equal(loginResponse.status, 200)
+    assert.equal(Object.prototype.hasOwnProperty.call(loginBody, 'token'), false)
+    assert.match(accessCookie, /HttpOnly/i)
+    assert.match(csrfCookie, /SameSite=Lax/i)
+
+    const profile = await request('/api/user/profile', { headers: { cookie: cookieHeader } })
+    assert.equal(profile.response.status, 200)
+    assert.equal(profile.body.userName, 'integration-user')
+
+    const logout = await fetch(`${baseUrl}/api/user/logout`, {
+        method: 'POST',
+        headers: { cookie: cookieHeader, 'x-csrf-token': csrfToken }
+    })
+    assert.equal(logout.status, 204)
+    assert.ok(logout.headers.getSetCookie().some((cookie) => cookie.startsWith('accessToken=;')))
+})

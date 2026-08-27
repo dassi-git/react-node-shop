@@ -13,7 +13,7 @@ import {useSelector,useDispatch} from "react-redux"
 const Login = () => {
     const toast = useRef(null);
     const dispatch=useDispatch() 
-    const [login, { isError, isSuccess, error, data, isLoading }] = useLoginMutation()
+    const [login, { isError, isSuccess, error, data: loginData, isLoading }] = useLoginMutation()
     const [updateProduct] = useUpdeteProductMutation()
     const navigate=useNavigate();
 
@@ -25,7 +25,7 @@ const Login = () => {
     useEffect(() => {
         if (isSuccess) {
             toast.current.show({severity:'success', summary: 'הצלחה', detail: 'התחברת בהצלחה!', life: 3000});
-            dispatch(setToken(data))
+            dispatch(setToken({ user: loginData?.user }))
             
             const pendingProductId = sessionStorage.getItem('pendingProductId');
             if (pendingProductId) {

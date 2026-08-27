@@ -281,6 +281,7 @@ const AllProduct = () => {
 
                     <div className="product-card-body">
                         <div className="product-card-name">{product.name}</div>
+                        {product.inventoryStatus === 'LOWSTOCK' && <div className="product-low-stock-warning" role="status">מלאי נמוך - מומלץ להזמין בהקדם</div>}
                         <div className="product-card-rating-row">
                             <Rating value={product.rating} readOnly cancel={false}></Rating>
                             <span>{Number(product.rating || 0).toFixed(1)}</span>

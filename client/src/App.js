@@ -4,6 +4,10 @@ import Login from './features/user/login';
 import ForgotPassword from './features/user/ForgotPassword';
 import ResetPassword from './features/user/ResetPassword';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { useEffect } from 'react';
+import { useGetCurrentUserProfileQuery } from './features/user/userSlice';
+import { setToken } from './features/user/authSlice';
+import { useDispatch } from 'react-redux';
 
 import Layout from './components/cpmponents/layout';
 import Home from './components/Home';
@@ -27,6 +31,13 @@ import PaymentSuccessPage from './features/order/PaymentSuccessPage';
 import SeasonManagementPage from './features/season/SeasonManagementPage';
 
 function App() {
+  const dispatch = useDispatch();
+  const { data: currentUser } = useGetCurrentUserProfileQuery();
+
+  useEffect(() => {
+    if (currentUser) dispatch(setToken({ user: currentUser }));
+  }, [currentUser, dispatch]);
+
   return (
     <div className="App">
 

@@ -116,6 +116,9 @@ const createPayment = async (req, res) => {
 
         return res.status(201).json({ message: 'Payment started', payment })
     } catch (error) {
+        if (error?.code === 11000) {
+            return res.status(409).json({ message: 'A payment already exists for this order.' })
+        }
         console.error('Error creating payment:', error)
         return res.status(500).json({ message: 'Server error creating payment' })
     }

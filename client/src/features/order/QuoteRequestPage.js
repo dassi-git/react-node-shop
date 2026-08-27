@@ -133,7 +133,7 @@ const QuoteRequestPage = () => {
                             <h3 style={{ margin: '0 0 12px' }}>הפריטים שבחרת להצעת המחיר</h3>
                             <div style={{ display: 'grid', gap: 10 }}>
                                 {basket.map((item) => (
-                                    <div key={item._id} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                                    <div key={item._basketItemId || `${item._id}-${item.selectedOptions ? JSON.stringify(item.selectedOptions) : ''}`} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
                                         <span>{item.name} × {item.quantity}{item.selectedOptions && Object.keys(item.selectedOptions).length > 0 ? ` (${Object.entries(item.selectedOptions).map(([name, value]) => `${name}: ${Array.isArray(value) ? value.join(', ') : value}`).join(' | ')})` : ''}</span>
                                         <strong>{(Number(item.price || 0) * Number(item.quantity || 1)).toLocaleString('he-IL')} ₪</strong>
                                     </div>

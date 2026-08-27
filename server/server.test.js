@@ -88,6 +88,18 @@ test('malformed JSON returns a client error and hides server metadata', async ()
     assert.equal(response.headers.get('x-powered-by'), null)
 })
 
+test('JSON request bodies larger than 1 MB are rejected', async () => {
+    const response = await fetch(`${baseUrl}/api/user/login`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ payload: 'x'.repeat(1024 * 1024) })
+    })
+    const body = await response.json()
+
+    assert.equal(response.status, 413)
+    assert.match(body.message, /request entity too large/i)
+})
+
 test('protected quote and payment routes reject anonymous requests', async () => {
     const routes = [
         ['/api/quote/order/not-an-object-id', 'GET'],
@@ -101,6 +113,22 @@ test('protected quote and payment routes reject anonymous requests', async () =>
         assert.equal(response.status, 401)
         assert.match(body.message, /Unauthorized/)
     }
+})
+
+test('cookie-authenticated state changes require a matching CSRF token', async () => {
+    const cookie = 'accessToken=fake; csrfToken=expected'
+
+    const missingHeader = await fetch(`${baseUrl}/api/user/logout`, {
+        method: 'POST',
+        headers: { cookie }
+    })
+    assert.equal(missingHeader.status, 403)
+
+    const validHeader = await fetch(`${baseUrl}/api/user/logout`, {
+        method: 'POST',
+        headers: { cookie, 'x-csrf-token': 'expected' }
+    })
+    assert.equal(validHeader.status, 204)
 })
 
 test('payment mutations are rate limited independently', async () => {
