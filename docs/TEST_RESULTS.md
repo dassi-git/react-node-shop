@@ -79,6 +79,9 @@
 | Admin route guard authorization coverage | `PASS` | `CI=true npm --prefix client test -- --watchAll=false --runInBand`: 3 suites ו־6 tests עברו; `RequireAdmin` ממתין ל־auth bootstrap, חוסם משתמש רגיל ומציג תוכן למנהל; `CI=true npm --prefix client run build` עבר |
 | All admin endpoint authorization coverage | `PASS` | `NODE_ENV=development node --test --test-concurrency=1 authorization.test.js`: 12 tests עברו; נקודות ה־admin של users, orders, quotes, seasons, bundles, products ו־payments החזירו `401` ללא token ו־`403` למשתמש רגיל |
 | Full server regression after admin endpoint authorization coverage | `PASS` | `NODE_ENV=development npm test -- --test-concurrency=1` מתוך `server`: 51 tests עברו |
+| P0 #1: Server-side data validation coverage (client-data tampering) | `PASS` | `NODE_ENV=development node --test --test-concurrency=1 failure-cases.test.js`: 7 tests עברו (3 קיימים + 4 חדשים). בדיקות חדשות: (1) מחיר מזויף מהלקוח (`clientPrice: 1`) נדחה – ההזמנה נוצרה עם מחיר שרת `50`; (2) `userId` מזויף בגוף הבקשה נדחה – ההזמנה נוצרה עם ה-userId מה-JWT; (3) `role: 'Admin'` בגוף הבקשה נדחה – endpoint מוגן-Admin החזיר `403`; (4) JWT שפג תוקפו (expired) → `403 Forbidden` |
+| P0 #2: Full end-to-end flow test | `PASS` | `NODE_ENV=development node --test --test-concurrency=1 full-flow.test.js`: 1 test עבר עם 9 שלבים: Register→Login(cookie JWT)→AddToBasket→CreateOrder→AdminCreateQuote→UserAcceptQuote→ManualPayment(bank_transfer)→AdminConfirmPayment→order.status='paid'. statusHistory: `quote_requested → quote_sent → quote_accepted → payment_pending → paid`, finalPrice=120 |
+| Full server regression after P0 coverage additions | `PASS` | `NODE_ENV=development node --test --test-concurrency=1` מתוך `server`: **56 tests עברו, 0 נכשלו** (51 קיימים + 4 חדשים ב-failure-cases.test.js + 1 full-flow.test.js) |
 
 ## הרצה 2026-08-26
 
@@ -299,13 +302,48 @@
 - `FIX-027` - נוסף קישור מפורש `fruitKey` בין ערכי פירות במוצר לקטלוג העונתיות.
 - `FIX-028` - נוספו מגבלת מספר פירות ותוספת מחיר לכל פרי מעבר לראשון לפי הגדרת המוצר.
 
+## הרצה 2026-08-27 (המשך)
+
+| בדיקה | סטטוס | תוצאה |
+|---|---|---|
+| Server-side price validation — client cannot forge price | `PASS` | `node --test --test-concurrency=1 failure-cases.test.js`: בדיקה עברה; `clientPrice: 1` ו־`deliveryFee: 999` נדחו, ההזמנה נוצרה עם `unitPrice=50` ו־`deliveryFee=0` מהשרת |
+| Server-side ownership — userId injected in body is ignored | `PASS` | `node --test --test-concurrency=1 failure-cases.test.js`: בדיקה עברה; `userId` של משתמש אחר בגוף הבקשה נדחה, ההזמנה הוקצתה ל-userId מה-JWT |
+| Server-side role — role injected in body is ignored | `PASS` | `node --test --test-concurrency=1 failure-cases.test.js`: בדיקה עברה; `role: 'Admin'` בגוף הבקשה נדחה, endpoint מוגן-Admin החזיר `403` לפי ה-JWT |
+| Expired JWT rejected with 403 | `PASS` | `node --test --test-concurrency=1 failure-cases.test.js`: בדיקה עברה; token עם `expiresIn: 1` לאחר 1.1 שניות החזיר `403 Forbidden - Invalid or expired token` |
+| Full end-to-end flow with manual payment | `PASS` | `node --test --test-concurrency=1 full-flow.test.js`: בדיקה עברה; Register→Login→Basket→Order→AdminQuote→AcceptQuote→ManualPayment(bank_transfer)→AdminConfirm; סטטוס סופי `paid`, מחיר מהשרת `120`, statusHistory: `quote_requested → quote_sent → quote_accepted → payment_pending → paid` |
+| Full server regression after P0/P1 coverage | `PASS` | `NODE_ENV=development node --test --test-concurrency=1` מתוך `server`: **56 tests עברו**, 0 נכשלו |
+
+## סיכום כיסוי P0/P1
+
+### P0 — server-side validation (COMPLETE)
+- מחיר: `orderController` לוקח `product.price` מהשרת; `clientPrice`, `items[].unitPrice` מגוף הבקשה מתעלמים לחלוטין — **מוכח בבדיקה**
+- userId: ה-controller משתמש ב-`req.user._id` מה-JWT בלבד — **מוכח בבדיקה**
+- role: `verifyJwt` + `admin.js` middleware קוראים מה-JWT, לא מה-body — **מוכח בבדיקה**
+- מלאי: `basketController` ו-`orderController` בודקים `inventoryStatus`/`quantity` מה-DB לפני כל פעולה — **מוכח בבדיקות failure-cases וorder**
+
+### P0 — תרחיש מלא (COMPLETE)
+- Register→Login→Product→Basket→Quote→AdminQuote→Approval→ManualPayment→AdminConfirm→paid — **מוכח ב-full-flow.test.js**
+
+### P1 — בדיקות כשל (COMPLETE)
+- מוצר חסר → `400` — failure-cases.test.js
+- מלאי אזל → `400` — failure-cases.test.js
+- תשלום כפול → `409` — failure-cases.test.js
+- token שפג → `403` — failure-cases.test.js
+- webhook חוזר (idempotency) → רשומה יחידה — payment.test.js
+
+### P1 — transaction ומלאי (COMPLETE — קיים בקוד)
+- `createOrder`: `mongoose.startSession()` + `withTransaction` לשריון מלאי ויצירת הזמנה אטומית
+- `createQuote`: `withTransaction` לעדכון הזמנה והצעה ביחד
+
+### P1 — idempotency (COMPLETE — קיים בקוד)
+- `createPayment`/`createManualPayment`: `Payment.findOne({ orderId, status: { $in: ['pending','paid'] } })` לפני create
+- `finishPayment`: `findOneAndUpdate` עם upsert + transaction
+- Unique index על `{ orderId }` עם `partialFilterExpression` למניעת כפילות DB-level
+- Stripe webhook: בדיקת `existingPayment.status === 'paid'` לפני עדכון
+
 ## סדר בדיקות להמשך
 
-1. להפעיל DB ושרת ולשמור תוצאות API עם קודי HTTP.
-2. לבדוק הרשמה והתחברות עם משתמש חדש.
-3. לבדוק Stripe Test ו־PayPal Sandbox.
-5. להריץ בדיקות UI/UX ידניות לפי `PRODUCTION_READINESS_CHECKLIST.md`.
-6. לתעד כל כשל חדש כאן לפני תיקון.
-7. להריץ regression מלא אחרי כל תיקון.
-8. לבדוק בדפדפן מוצר עם אפשרויות, שתי התאמות שונות לאותו מוצר, והזמנה מלאה בסביבת staging.
-9. ליצור חשבון מנהל בדיקה, להוסיף עונת `mango`, ולהריץ תרחיש premium/available/unavailable מלא מול מוצר אמיתי.
+1. לבדוק Stripe Test ו־PayPal Sandbox לאחר רישום עסק ופתיחת חשבונות.
+2. להריץ בדיקות UI/UX ידניות לפי `PRODUCTION_READINESS_CHECKLIST.md`.
+3. לבדוק בדפדפן מוצר עם אפשרויות, שתי התאמות שונות לאותו מוצר, והזמנה מלאה בסביבת staging.
+4. ליצור חשבון מנהל בדיקה, להוסיף עונת `mango`, ולהריץ תרחיש premium/available/unavailable מלא מול מוצר אמיתי.
